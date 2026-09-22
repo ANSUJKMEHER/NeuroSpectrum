@@ -163,3 +163,39 @@ class DifferentiableSpectralAnalyzer(nn.Module):
             'gamma': gamma,
             'freqs': self.f_bins.to(device=density.device, dtype=density.dtype)
         }
+
+
+def compute_continuous_point_spectrum(points: np.ndarray, grid_res: int = 64):
+    """
+    Computes exact continuous 2D Power Spectral Density and 1D Radial Spectrum
+    directly from point coordinates via continuous point Fourier transform:
+    F(k) = (1 / sqrt(N)) * sum_j exp(-2*pi*i * k . x_j), P(k) = |F(k)|^2
+    """
+    N = len(points)
+    half = grid_res // 2
+    kx = np.arange(-half, half)
+    ky = np.arange(-half, half)
+    KX, KY = np.meshgrid(kx, ky)
+
+    phases = 2.0 * np.pi * (
+        KX[:, :, None] * points[None, None, :, 0] +
+        KY[:, :, None] * points[None, None, :, 1]
+    )
+    cos_sum = np.sum(np.cos(phases), axis=-1)
+    sin_sum = np.sum(np.sin(phases), axis=-1)
+    psd_2d = (cos_sum ** 2 + sin_sum ** 2) / max(1, N)
+    psd_2d[half, half] = 0.0
+
+    rad_dist = np.sqrt(KX ** 2 + KY ** 2)
+    max_r = half - 1
+    bins = np.arange(1, max_r + 1)
+    radial_p = []
+
+    for r in bins:
+        mask = (rad_dist >= r - 0.5) & (rad_dist < r + 0.5)
+        if np.any(mask):
+            radial_p.append(float(np.mean(psd_2d[mask])))
+        else:
+            radial_p.append(0.0)
+
+    return psd_2d, [int(b) for b in bins], radial_p

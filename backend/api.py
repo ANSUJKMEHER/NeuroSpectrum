@@ -88,6 +88,28 @@ class CheckpointSaveRequest(BaseModel):
     filename: str = "checkpoint_custom.pt"
 
 
+class UniversalTargetPreviewRequest(BaseModel):
+    target_type: str = "text"
+    text: Optional[str] = "NEURO"
+    shape: Optional[str] = "heart"
+    image_base64: Optional[str] = None
+    points: Optional[List[List[float]]] = None
+    n_points: int = 256
+
+
+class UniversalMorphRequest(BaseModel):
+    source_points: Any = "spiral"
+    target_spec: Dict[str, Any] = {"type": "text", "text": "NEURO"}
+    num_steps: int = 60
+    capture_interval: int = 2
+    lr: float = 0.04
+
+
+class CustomPointsUploadRequest(BaseModel):
+    points: List[List[float]]
+    label: Optional[str] = "Uploaded Points"
+
+
 # --- Lifespan / Startup Hook ---
 @app.on_event("startup")
 async def startup_event():
@@ -394,6 +416,66 @@ def get_figure2_image(refresh: bool = False):
     bench_data = generate_figure2_benchmark(inference_service.engine, n_particles=256, force_refresh=refresh)
     img_bytes = generate_figure2_image_bytes(bench_data)
     return Response(content=img_bytes, media_type="image/png")
+
+
+# --- Universal "Any Input -> Any Output" Synthesis Endpoints ---
+@app.post("/api/universal/target-preview")
+def universal_target_preview(req: UniversalTargetPreviewRequest):
+    try:
+        spec = {
+            "type": req.target_type,
+            "text": req.text,
+            "shape": req.shape,
+            "image_base64": req.image_base64,
+            "points": req.points
+        }
+        res = inference_service.generate_target_preview(spec, n_points=req.n_points)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/universal/morph")
+def universal_morph(req: UniversalMorphRequest):
+    try:
+        res = inference_service.run_universal_morph(
+            source_points=req.source_points,
+            target_spec=req.target_spec,
+            num_steps=req.num_steps,
+            capture_interval=req.capture_interval,
+            lr=req.lr
+        )
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/universal/upload-input")
+def universal_upload_input(req: CustomPointsUploadRequest):
+    import numpy as np
+    from spectrum import compute_continuous_point_spectrum
+    try:
+        pts = np.asarray(req.points, dtype=np.float32)
+        if len(pts) == 0:
+            raise ValueError("No points provided.")
+        # Auto-normalize to [0.05, 0.95] if not already in [0, 1]
+        if pts.min() < 0.0 or pts.max() > 1.0:
+            p_min = pts.min(axis=0)
+            p_max = pts.max(axis=0)
+            scale = np.maximum(p_max - p_min, 1e-6)
+            pts = (pts - p_min) / scale * 0.85 + 0.075
+
+        psd_2d, freqs, radial_p = compute_continuous_point_spectrum(pts)
+        return {
+            "points": pts.tolist(),
+            "n_points": len(pts),
+            "label": req.label,
+            "psd_2d": psd_2d.tolist(),
+            "radial_psd": radial_p,
+            "frequencies": freqs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # --- WebSocket Streaming ---

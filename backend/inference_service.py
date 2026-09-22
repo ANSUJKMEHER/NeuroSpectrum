@@ -108,3 +108,114 @@ class InferenceService:
                 self.engine._param_snapshot = [p.clone().detach() for p in self.engine.model.parameters()]
             
         return res
+
+    def generate_target_preview(self, target_spec: Dict[str, Any], n_points: int = 256) -> Dict[str, Any]:
+        """Generates target point cloud coordinates for UI preview."""
+        import numpy as np
+        from universal_synthesizer import TargetGeometryFactory
+        from spectrum import compute_continuous_point_spectrum
+
+        tgt_type = target_spec.get("type", "text").lower()
+        if tgt_type == "text":
+            text_str = target_spec.get("text", "NEURO").strip() or "NEURO"
+            pts = TargetGeometryFactory.create_from_text(text_str, n_points=n_points)
+            label = f"Text: \"{text_str}\""
+        elif tgt_type == "shape":
+            shape_name = target_spec.get("shape", "heart").lower()
+            pts = TargetGeometryFactory.create_target(shape_name, n_points=n_points)
+            label = f"Shape: {shape_name.capitalize()}"
+        elif tgt_type == "image":
+            import io, base64
+            from PIL import Image
+            img_b64 = target_spec.get("image_base64", "")
+            if img_b64:
+                if "," in img_b64:
+                    img_b64 = img_b64.split(",")[1]
+                img_bytes = base64.b64decode(img_b64)
+                img = Image.open(io.BytesIO(img_bytes))
+                pts = TargetGeometryFactory.create_from_image(img, n_points=n_points)
+                label = "Image Silhouette"
+            else:
+                pts = TargetGeometryFactory.create_target("star", n_points=n_points)
+                label = "Star (Default)"
+        elif tgt_type == "points":
+            raw_pts = target_spec.get("points", [])
+            pts = np.asarray(raw_pts, dtype=np.float32) if len(raw_pts) > 0 else TargetGeometryFactory.create_target("star", n_points=n_points)
+            label = "Custom Points"
+        else:
+            pts = TargetGeometryFactory.create_target("heart", n_points=n_points)
+            label = "Heart Shape"
+
+        psd_2d, freqs, radial_p = compute_continuous_point_spectrum(pts)
+        return {
+            "points": pts.tolist(),
+            "n_points": len(pts),
+            "label": label,
+            "psd_2d": psd_2d.tolist(),
+            "radial_psd": radial_p,
+            "frequencies": freqs
+        }
+
+    def run_universal_morph(
+        self,
+        source_points: Any,
+        target_spec: Dict[str, Any],
+        num_steps: int = 60,
+        capture_interval: int = 2,
+        lr: float = 0.04
+    ) -> Dict[str, Any]:
+        """
+        Runs universal any-to-any point morphing via Optimal Transport and Backpropagation.
+        """
+        import numpy as np
+        from universal_synthesizer import TargetGeometryFactory, UniversalBackpropMorpher
+
+        # Parse source points
+        if isinstance(source_points, str):
+            src_str = source_points.lower()
+            if src_str in ["spiral", "star", "heart", "double_rings"]:
+                src_pts = TargetGeometryFactory.create_target(src_str, n_points=256)
+            elif src_str == "grid":
+                import data
+                src_pts = data.generate_regular_grid(1, 256)[0].numpy()
+            elif src_str == "jittered":
+                import data
+                src_pts = data.generate_jittered_grid(1, 256)[0].numpy()
+            else:
+                src_pts = np.random.uniform(0.05, 0.95, size=(256, 2)).astype(np.float32)
+        elif isinstance(source_points, list):
+            src_pts = np.asarray(source_points, dtype=np.float32)
+        else:
+            src_pts = np.asarray(source_points, dtype=np.float32)
+
+        N = len(src_pts)
+
+        # Parse target points
+        tgt_type = target_spec.get("type", "text").lower()
+        if tgt_type == "text":
+            text_str = target_spec.get("text", "NEURO").strip() or "NEURO"
+            tgt_pts = TargetGeometryFactory.create_from_text(text_str, n_points=N)
+        elif tgt_type == "shape":
+            shape_name = target_spec.get("shape", "heart").lower()
+            tgt_pts = TargetGeometryFactory.create_target(shape_name, n_points=N)
+        elif tgt_type == "image":
+            import io, base64
+            from PIL import Image
+            img_b64 = target_spec.get("image_base64", "")
+            if img_b64:
+                if "," in img_b64:
+                    img_b64 = img_b64.split(",")[1]
+                img_bytes = base64.b64decode(img_b64)
+                img = Image.open(io.BytesIO(img_bytes))
+                tgt_pts = TargetGeometryFactory.create_from_image(img, n_points=N)
+            else:
+                tgt_pts = TargetGeometryFactory.create_target("star", n_points=N)
+        elif tgt_type == "points":
+            raw_pts = target_spec.get("points", [])
+            tgt_pts = np.asarray(raw_pts, dtype=np.float32) if len(raw_pts) > 0 else TargetGeometryFactory.create_target("star", n_points=N)
+        else:
+            tgt_pts = TargetGeometryFactory.create_target("heart", n_points=N)
+
+        morpher = UniversalBackpropMorpher(lr=lr)
+        res = morpher.morph(src_pts, tgt_pts, num_steps=num_steps, capture_interval=capture_interval)
+        return res

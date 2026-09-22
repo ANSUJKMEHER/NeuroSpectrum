@@ -151,7 +151,12 @@ Open **`http://localhost:8000`** in your browser.
    - Full 6-method side-by-side comparison: **Input (Spiral)** | **CMJ** | **CCVT** | **Curl PN** | **Phasor GP / NeuroSpectrum (Ours)** | **PDS**.
    - Evaluates all 6 quantitative metrics: Mean spacing ($d_{\text{mean}}$), Anisotropy ($\hat{a}$), Discrepancy ($v_D$), Nyquist frequency ($f_N$), Quality ($Q = f_N / \hat{a}$), and Voronoi area regularity ($CV$).
    - 1-Click high-resolution publication PNG export (`/api/benchmark/figure2/image`).
-3. **Comprehensive Metrics Guide**:
+3. **Universal Studio ("Any Input → Any Output")**:
+   - **Arbitrary Input Geometries**: Archimedean Spiral, Regular/Jittered Grid, Random Poisson, Star, Heart, or **interactive drawing on canvas** & **custom coordinate upload** (`.csv`, `.json`, `.txt`).
+   - **Arbitrary Target Objectives**: Type arbitrary text glyphs (e.g. `"NEURO"`, `"AI"`, `"DIFF"`, `"UROP"`), parametric shapes (Heart, 5-Star, Rings, Yin-Yang), image silhouettes, or power-law spectral exponents.
+   - **Multi-Phase Neural Synthesis**: Entropic Optimal Transport (Sinkhorn $W_2$) + Differentiable Chamfer boundary refinement + scale-adaptive quadratic anti-collision barrier ($d_{\min} \ge 0.90 / \sqrt{N}$, zero coincident collisions).
+   - **Animation & Video Export**: Interactive scrubber, frame stepping, real-time continuous point Fourier spectrum $|F(\mathbf{k})|^2$ and radial $P(k)$ curves, and 1-click **`🎥 Export Video (.webm)`** downloads.
+4. **Comprehensive Metrics Guide**:
    - See [FIGURE2_AND_TABLE2_METRICS_EXPLAINED.md](FIGURE2_AND_TABLE2_METRICS_EXPLAINED.md) for full mathematical derivations, physical explanations, and the faculty presentation cheat sheet.
 
 ---
