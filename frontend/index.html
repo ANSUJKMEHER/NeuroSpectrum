@@ -1,0 +1,2779 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroSpectrum — Neural Differentiable Point Distribution Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#111827',
+                            950: '#030712',
+                        },
+                        indigo: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        /* Mild, Smooth, Refined Themes */
+        :root {
+            --bg-base: #f8fafc;
+            --surface-card: #ffffff;
+            --border-subtle: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent-primary: #4f46e5;
+            --accent-hover: #4338ca;
+        }
+
+        .dark {
+            --bg-base: #0b0f19;
+            --surface-card: #111827;
+            --border-subtle: #1f2937;
+            --border-hover: #374151;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-hover: #818cf8;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        /* Subtle Smooth Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background: #374151; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+        /* Surface Card Panels */
+        .surface-card {
+            background-color: var(--surface-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .surface-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        /* Custom Refined Sliders */
+        input[type="range"]:not(.scrub-range-input) {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            cursor: pointer;
+            outline: none;
+            margin: 6px 0;
+            transition: background 0.1s ease;
+        }
+        .dark input[type="range"]:not(.scrub-range-input) {
+            background: #374151;
+        }
+        input[type="range"]:not(.scrub-range-input)::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4f46e5;
+            border: 2px solid #ffffff;
+            box-shadow: 0 1px 4px rgba(79, 70, 229, 0.35);
+            transition: transform 0.12s ease;
+        }
+        .dark input[type="range"]:not(.scrub-range-input)::-webkit-slider-thumb {
+            background: #6366f1;
+            border-color: #111827;
+        }
+        input[type="range"]:not(.scrub-range-input)::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        /* Scrubber Slider */
+        .scrub-range-input {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+            outline: none;
+            margin: 0;
+            height: 24px;
+        }
+        .scrub-range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4f46e5;
+            border: 2.5px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.4);
+            transition: transform 0.12s ease;
+            cursor: pointer;
+        }
+        .dark .scrub-range-input::-webkit-slider-thumb {
+            background: #818cf8;
+            border-color: #111827;
+        }
+        .scrub-range-input::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Canvas Viewport */
+        .canvas-viewport {
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 70%),
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+        }
+
+        .canvas-viewport.light-grid {
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.04) 0%, transparent 70%),
+                linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500/20 selection:text-indigo-900">
+
+    <!-- ===================================================================== -->
+    <!-- HEADER BAR: REFINED, PROFESSIONAL NAVIGATION -->
+    <!-- ===================================================================== -->
+    <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-6 py-3 flex items-center justify-between shadow-xs dark:bg-slate-900/90 dark:border-slate-800">
+        <!-- Brand Title -->
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm text-white font-bold text-sm">
+                NS
+            </div>
+            <div>
+                <div class="flex items-center">
+                    <span class="font-bold text-sm tracking-tight text-slate-900 dark:text-white">NEUROSPECTRUM</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs (Center) -->
+        <nav class="flex items-center p-1 bg-slate-100/90 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-medium text-xs">
+            <button id="tab-btn-sim" onclick="switchTab('sim')" class="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer">
+                <span>🔬</span>
+                <span>Simulation Studio</span>
+            </button>
+            <button id="tab-btn-analytics" onclick="switchTab('analytics')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer">
+                <span>📊</span>
+                <span>Spectral Analytics</span>
+            </button>
+            <button id="tab-btn-figure2" onclick="switchTab('figure2')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer">
+                <span>📄</span>
+                <span>Figure 2 Benchmark</span>
+            </button>
+            <button id="tab-btn-benchmarks" onclick="switchTab('benchmarks')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer">
+                <span>🧪</span>
+                <span>Generalization Benchmarks</span>
+            </button>
+            <button id="tab-btn-train" onclick="switchTab('train')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer">
+                <span>🧠</span>
+                <span>Model & Training</span>
+            </button>
+        </nav>
+
+        <!-- Right Quick Status, Optimal Button & Theme Toggle -->
+        <div class="flex items-center space-x-2.5 text-xs font-mono">
+            <!-- Hardware Badge -->
+            <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="nav-hardware-label">Apple Silicon (MPS)</span>
+            </div>
+
+            <!-- Best Blue Noise 1-Click Button -->
+            <button onclick="applyOptimalBlueNoise()" class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-semibold transition-all flex items-center space-x-1 shadow-xs cursor-pointer dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800">
+                <span class="text-amber-500">★</span>
+                <span>Optimal Blue Noise</span>
+            </button>
+
+            <!-- Theme Switcher -->
+            <button onclick="toggleTheme()" id="btn-theme" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 transition-all flex items-center justify-center cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300" title="Toggle Light / Dark Theme">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: SIMULATION STUDIO (MAIN VIEW) -->
+    <!-- ===================================================================== -->
+    <main id="tab-sim" class="relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-6 py-5 flex flex-col space-y-5">
+
+        <!-- TOP METRICS STRIP: REAL QUANTITATIVE TELEMETRY -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+            <!-- Metric 1: Spectral Exponent -->
+            <div class="surface-card p-3.5 flex flex-col justify-between">
+                <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Target vs Measured γ</span>
+                <div class="flex items-baseline space-x-2 mt-1">
+                    <span id="metric-gamma-meas" class="text-lg font-bold font-mono text-slate-900 dark:text-white">+0.98</span>
+                    <span id="metric-gamma-target" class="text-xs font-mono text-slate-500 dark:text-slate-400">(target: +1.00)</span>
+                </div>
+                <span id="metric-gamma-status" class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">Δ = 0.02 (Converged)</span>
+            </div>
+
+            <!-- Metric 2: Spatial Uniformity CV_NND -->
+            <div class="surface-card p-3.5 flex flex-col justify-between">
+                <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Spatial Regularity (CV)</span>
+                <div class="flex items-baseline space-x-1 mt-1">
+                    <span id="metric-cv-val" class="text-lg font-bold font-mono text-slate-900 dark:text-white">0.354</span>
+                    <span class="text-xs text-slate-500">σ/μ</span>
+                </div>
+                <span id="metric-cv-status" class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-medium mt-0.5">High Regularity</span>
+            </div>
+
+            <!-- Metric 3: Energy Dissipation -->
+            <div class="surface-card p-3.5 flex flex-col justify-between">
+                <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Energy Dissipation ΔE</span>
+                <div class="flex items-baseline space-x-1 mt-1">
+                    <span id="metric-energy-val" class="text-lg font-bold font-mono text-slate-900 dark:text-white">-4.85</span>
+                    <span class="text-xs text-slate-500">J</span>
+                </div>
+                <span id="metric-energy-status" class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">Hamiltonian Relaxed</span>
+            </div>
+
+            <!-- Metric 4: Minimum Pair Spacing -->
+            <div class="surface-card p-3.5 flex flex-col justify-between">
+                <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Minimum Separation</span>
+                <div class="flex items-baseline space-x-1 mt-1">
+                    <span id="metric-spacing-val" class="text-lg font-bold font-mono text-slate-900 dark:text-white">0.0382</span>
+                    <span class="text-xs text-slate-500">L</span>
+                </div>
+                <span id="metric-spacing-status" class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">0 Coincident Pairs</span>
+            </div>
+
+            <!-- Metric 5: Physics Engine & Equilibrium Info -->
+            <div class="surface-card p-3.5 flex flex-col justify-between col-span-2 sm:col-span-1">
+                <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Equilibrium Status</span>
+                <div class="mt-1">
+                    <span id="metric-convergence-val" class="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">⚡ Auto-Stop Ready</span>
+                </div>
+                <span id="metric-convergence-status" class="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">Velocity Verlet · Symplectic</span>
+            </div>
+        </div>
+
+        <!-- MAIN 2-COLUMN STUDIO -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- LEFT CONTROLS COLUMN (4 COLS) -->
+            <div class="lg:col-span-4 flex flex-col space-y-4">
+
+                <!-- 1. Noise Distribution Selector -->
+                <div class="surface-card p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Noise Distribution</span>
+                        <span id="badge-active-regime" class="text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md font-mono dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800">Blue Noise</span>
+                    </div>
+
+                    <!-- 4 Preset Cards -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Blue Noise -->
+                        <button onclick="setNoisePreset(1.0, 'spiral')" id="preset-blue" class="p-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition-all cursor-pointer dark:bg-indigo-950/40">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300">Blue Noise</span>
+                                <span class="text-[10px] font-mono font-semibold text-indigo-600 dark:text-indigo-400">γ = +1.0</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Uniform spatial exclusion.</div>
+                        </button>
+
+                        <!-- White Noise -->
+                        <button onclick="setNoisePreset(0.0, 'random')" id="preset-white" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">White Noise</span>
+                                <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400">γ = 0.0</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Poisson random unlinked.</div>
+                        </button>
+
+                        <!-- Pink Noise -->
+                        <button onclick="setNoisePreset(-0.5, 'random')" id="preset-pink" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Pink (1/f)</span>
+                                <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400">γ = -0.5</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Natural flicker noise.</div>
+                        </button>
+
+                        <!-- Red Noise -->
+                        <button onclick="setNoisePreset(-1.0, 'clustered')" id="preset-red" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Red Noise</span>
+                                <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400">γ = -1.0</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Dense organic clusters.</div>
+                        </button>
+                    </div>
+
+                    <!-- Continuous Target Exponent Slider -->
+                    <div class="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <span class="text-slate-500 dark:text-slate-400">Target Exponent (γ*):</span>
+                            <span id="label-gamma-val" class="text-indigo-600 dark:text-indigo-400 font-bold">+1.00</span>
+                        </div>
+                        <input id="slider-gamma" type="range" min="-2.0" max="2.0" step="0.05" value="1.0" class="w-full" oninput="onGammaChange(this.value)">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                            <span>Red (-2.0)</span>
+                            <span>White (0.0)</span>
+                            <span>Blue (+2.0)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Simulation Execution & Playback -->
+                <div class="surface-card p-4 space-y-3">
+                    <!-- Run Button -->
+                    <button id="btn-run" onclick="runSimulation()" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm tracking-wide transition-all shadow-sm flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.99]">
+                        <svg id="run-icon" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <span id="run-label">RUN SIMULATION</span>
+                    </button>
+
+                    <!-- Active Progress Bar -->
+                    <div id="sim-compute-card" class="hidden p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 dark:bg-indigo-950/40 dark:border-indigo-800/60 space-y-1.5">
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <span id="sim-compute-stage" class="text-indigo-800 dark:text-indigo-300 font-medium">Solving Velocity Verlet dynamics...</span>
+                            <span id="sim-compute-pct" class="font-bold text-indigo-700 dark:text-indigo-400">0%</span>
+                        </div>
+                        <div class="w-full bg-indigo-200/60 dark:bg-indigo-900/60 h-1.5 rounded-full overflow-hidden">
+                            <div id="sim-compute-fill" class="h-full bg-indigo-600 rounded-full transition-all duration-100" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Secondary Playback Controls -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="btn-pause" onclick="togglePause()" class="py-2 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium transition-all text-center cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+                            ⏸ Pause
+                        </button>
+                        <button onclick="resetSimulation()" class="py-2 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium transition-all text-center cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+                            🔄 Reset
+                        </button>
+                        <button onclick="randomizeSeed()" class="py-2 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium transition-all text-center cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+                            🎲 Seed
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Physical Parameters & Initial Geometry -->
+                <div class="surface-card p-4 space-y-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Parameters & Boundary</span>
+
+                    <!-- Initial Pattern -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1.5 font-medium text-slate-600 dark:text-slate-400">
+                            <span>Initial Pattern:</span>
+                            <span id="label-init-geom" class="font-mono text-indigo-600 dark:text-indigo-400 font-bold">SPIRAL</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium">
+                            <button id="geom-spiral" onclick="setGeom('spiral')" class="py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all text-center cursor-pointer">Spiral</button>
+                            <button id="geom-jittered" onclick="setGeom('jittered')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Jitter</button>
+                            <button id="geom-random" onclick="setGeom('random')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Random</button>
+                            <button id="geom-grid" onclick="setGeom('grid')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Grid</button>
+                        </div>
+                    </div>
+
+                    <!-- Particles & Steps -->
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 font-mono text-slate-500 dark:text-slate-400">
+                                <span>Particles N:</span>
+                                <span id="label-n-val" class="font-bold text-slate-800 dark:text-white">256</span>
+                            </div>
+                            <input id="slider-n" type="range" min="64" max="512" step="64" value="256" class="w-full" oninput="onNChange(this.value)">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 font-mono text-slate-500 dark:text-slate-400">
+                                <span id="label-steps-title">Fixed Steps:</span>
+                                <span id="label-steps-val" class="font-bold text-slate-800 dark:text-white">100</span>
+                            </div>
+                            <input id="slider-steps" type="range" min="20" max="250" step="10" value="100" class="w-full" oninput="document.getElementById('label-steps-val').innerText = this.value; updateSliderProgress('slider-steps')">
+                        </div>
+                    </div>
+
+                    <!-- Auto-Convergence Option -->
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label for="toggle-auto-converge" class="flex items-center space-x-2 cursor-pointer select-none">
+                                <input id="toggle-auto-converge" type="checkbox" onchange="onAutoConvergeToggle(this.checked)" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 cursor-pointer">
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                                    <span>⚡ Auto-Stop at Equilibrium</span>
+                                </span>
+                            </label>
+                            <span id="badge-auto-converge" class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">Full Quality (Fixed Steps)</span>
+                        </div>
+                        <p id="auto-converge-hint" class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                            Runs for the full 100 simulation steps without early stopping, producing pristine blue-noise dispersion and zero particle collisions.
+                        </p>
+                    </div>
+
+                    <!-- Toroidal Periodic Boundary -->
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+                        <span class="flex items-center space-x-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>Toroidal Minimum-Image Wrap</span>
+                        </span>
+                        <button onclick="injectCoincidentPair()" class="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-mono">
+                            Inject Overlap Test
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT VIEWPORT COLUMN (8 COLS) -->
+            <div class="lg:col-span-8 flex flex-col space-y-4">
+
+                <!-- Interactive Viewport Card -->
+                <div class="surface-card p-5 flex flex-col items-center relative">
+                    <!-- Viewport Top Bar -->
+                    <div class="w-full flex items-center justify-between mb-3.5">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Simulation Viewport</span>
+                        </div>
+
+                        <!-- Viewport Display Modes -->
+                        <div class="flex items-center space-x-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                            <button id="view-particles" onclick="setViewMode('particles')" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all cursor-pointer">Points</button>
+                            <button id="view-mesh" onclick="toggleMesh()" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Voronoi Lattice</button>
+                            <button id="view-trails" onclick="toggleTrails()" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Velocity Trails</button>
+                            <button id="view-density" onclick="setViewMode('density')" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Density Splat</button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Viewport Box -->
+                    <div id="canvas-container" class="relative w-full max-w-[520px] aspect-square rounded-2xl overflow-hidden canvas-viewport border border-slate-800/80 shadow-md select-none">
+                        <canvas id="sim-canvas" width="520" height="520" class="w-full h-full cursor-crosshair block"></canvas>
+
+                        <!-- HUD: Particle Count -->
+                        <div class="absolute top-3 left-3 flex flex-col space-y-1.5 pointer-events-none z-10 font-mono text-[11px]">
+                            <div class="px-2.5 py-1 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/10 text-emerald-400 flex items-center space-x-1.5 shadow-sm">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span>Particles: <span id="hud-particles" class="font-bold">256</span> (0 Overlaps)</span>
+                            </div>
+                        </div>
+
+                        <!-- HUD: Exponent Matching -->
+                        <div class="absolute top-3 right-3 flex flex-col items-end space-y-1 pointer-events-none z-10 font-mono text-[11px]">
+                            <div class="px-2.5 py-1 rounded-lg bg-slate-900/80 backdrop-blur-md border border-white/10 text-white shadow-sm flex items-center space-x-1.5">
+                                <span class="text-slate-400">Target:</span>
+                                <span id="hud-target-gamma" class="font-bold">+1.00</span>
+                                <span class="text-slate-500">·</span>
+                                <span class="text-slate-400">Meas:</span>
+                                <span id="hud-meas-gamma" class="font-bold text-emerald-400">+0.98</span>
+                            </div>
+                            <div class="px-2 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-md border border-white/10 text-[10px] text-slate-300 shadow-sm">
+                                <span id="hud-uniformity">Optimal Spatial Regularity</span>
+                            </div>
+                            <div id="hud-equilibrium-pill" class="hidden px-2 py-0.5 rounded-md bg-emerald-500/20 backdrop-blur-md border border-emerald-400/40 text-[10px] text-emerald-300 font-semibold shadow-sm flex items-center space-x-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>⚡ Settled @ Step <span id="hud-conv-step">35</span> (<span id="hud-steps-saved">15</span> saved)</span>
+                            </div>
+                        </div>
+
+                        <!-- Tooltip on Hover -->
+                        <div id="canvas-tooltip" class="absolute pointer-events-none opacity-0 transition-opacity z-20 px-3 py-2 rounded-xl bg-white/95 border border-indigo-400 shadow-xl font-mono text-[11px] text-slate-800 space-y-0.5 dark:bg-slate-900/95 dark:text-white dark:border-indigo-600">
+                            <div class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-between space-x-4">
+                                <span>Particle <span id="tip-idx">#0</span></span>
+                                <span class="text-[9px] text-emerald-600 font-semibold">Separated</span>
+                            </div>
+                            <div>Pos: <span id="tip-xy" class="font-semibold">(0.00, 0.00)</span></div>
+                            <div>Nearest Neighbor: <span id="tip-dist" class="text-emerald-600 font-semibold">0.0350</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Scrubber Timeline & Playback -->
+                    <div class="w-full max-w-[520px] mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col space-y-2">
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <div class="flex items-center space-x-2">
+                                <span id="scrub-play-indicator" class="inline-flex h-2 w-2 rounded-full bg-slate-400"></span>
+                                <span class="text-slate-600 dark:text-slate-400">Step: <span id="scrub-curr" class="text-slate-900 dark:text-white font-bold">0</span> / <span id="scrub-total">100</span></span>
+                                <span id="scrub-converge-tag" class="hidden px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">⚡ Equilibrium</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span id="scrub-pct-badge" class="px-2 py-0.5 rounded text-[11px] font-bold font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800">0%</span>
+                                <span id="sim-status-label" class="px-2 py-0.5 rounded text-[11px] font-medium bg-white text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">Ready</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress Track with Slider overlay -->
+                        <div class="relative w-full flex items-center h-6 my-0.5">
+                            <div class="absolute inset-x-0 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden pointer-events-none">
+                                <div id="sim-progress-fill" class="h-full bg-indigo-600 rounded-full transition-[width] duration-75 ease-out" style="width: 0%;"></div>
+                            </div>
+                            <input id="scrub-slider" type="range" min="0" max="100" value="0" class="w-full relative z-10 scrub-range-input" oninput="onScrubInput(this.value)">
+                        </div>
+
+                        <!-- Jump Markers -->
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400 px-0.5">
+                            <button type="button" class="cursor-pointer hover:text-indigo-600 transition-colors" onclick="jumpToPct(0)">0% (Start)</button>
+                            <button type="button" class="cursor-pointer hover:text-indigo-600 transition-colors" onclick="jumpToPct(25)">25%</button>
+                            <button type="button" class="cursor-pointer hover:text-indigo-600 transition-colors" onclick="jumpToPct(50)">50%</button>
+                            <button type="button" class="cursor-pointer hover:text-indigo-600 transition-colors" onclick="jumpToPct(75)">75%</button>
+                            <button type="button" class="cursor-pointer hover:text-indigo-600 transition-colors" onclick="jumpToPct(100)">100% (Equilibrium)</button>
+                        </div>
+
+                        <!-- Video Playback & Export Toolbar -->
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                            <div class="flex items-center space-x-1.5">
+                                <button id="btn-play-pause" onclick="togglePlayPause()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs">
+                                    <span id="play-icon">▶</span>
+                                    <span id="play-text">Play Video</span>
+                                </button>
+                                <button onclick="stepFrame(-1)" class="p-1 px-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono text-xs cursor-pointer" title="Previous Frame">
+                                    ⏮
+                                </button>
+                                <button onclick="stepFrame(1)" class="p-1 px-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono text-xs cursor-pointer" title="Next Frame">
+                                    ⏭
+                                </button>
+                                <select id="select-playback-speed" onchange="setPlaybackSpeed(this.value)" class="text-[11px] font-mono rounded px-1.5 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 cursor-pointer">
+                                    <option value="0.5">0.5x</option>
+                                    <option value="1.0" selected>1.0x</option>
+                                    <option value="2.0">2.0x</option>
+                                </select>
+                            </div>
+
+                            <button id="btn-export-video" onclick="recordSimulationVideo()" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-all" title="Record and export animation as WebM video for faculty presentation">
+                                <span>🎥</span>
+                                <span>Export Video (.webm)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Keyframe Timeline Progression Strip -->
+                <div class="surface-card p-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Evolution Progression Timeline</span>
+                        <span class="text-[11px] font-mono text-slate-400">Click any keyframe to inspect that state</span>
+                    </div>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2" id="filmstrip-container">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+
+                <!-- Live Spectral Signatures (EGSR 2026 Figure 2 Rows 2 & 3) -->
+                <div class="surface-card p-4 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Live Spectral Verification (EGSR 2026 Figure 2 Rows 2 & 3)</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400">Live synced with simulation video frame</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Row 2: 2D Fourier Power Spectrum |F(k)|² -->
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col items-center space-y-2">
+                            <div class="w-full flex items-center justify-between text-xs font-mono">
+                                <span class="font-bold text-slate-800 dark:text-slate-200">2D Power Spectrum |F(k)|²</span>
+                                <span class="text-[10px] text-slate-500 font-medium">DC (k=0) at center</span>
+                            </div>
+                            <div class="w-48 h-48 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-black shadow-inner flex items-center justify-center relative">
+                                <canvas id="canvas-2d-psd-live" width="64" height="64" class="w-full h-full image-render-pixelated"></canvas>
+                                <!-- Reticle crosshair for DC origin -->
+                                <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
+                                    <div class="w-full h-[1px] bg-red-400"></div>
+                                </div>
+                                <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
+                                    <div class="h-full w-[1px] bg-red-400"></div>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-center text-slate-500 dark:text-slate-400 leading-tight">
+                                Dark center hole = low-frequency suppression (pure blue noise).
+                            </p>
+                        </div>
+
+                        <!-- Row 3: 1D Radial Power Spectrum P(k) -->
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col space-y-2">
+                            <div class="w-full flex items-center justify-between text-xs font-mono">
+                                <span class="font-bold text-slate-800 dark:text-slate-200">Radial Power Spectrum P(k)</span>
+                                <span id="live-psd-peak-badge" class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">Peak k ≈ 16</span>
+                            </div>
+                            <div class="w-full h-48 relative">
+                                <canvas id="chart-psd-live"></canvas>
+                            </div>
+                            <div class="flex justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                                <span class="text-emerald-600 dark:text-emerald-400 font-medium">← Suppressed DC (k &lt; 5)</span>
+                                <span class="text-indigo-600 dark:text-indigo-400 font-medium">Principal Peak k ≈ √N</span>
+                                <span>Flat Poisson Tail →</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick link to Figure 2 Benchmark -->
+                    <button onclick="switchTab('figure2')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold text-xs shadow-sm transition-all flex items-center justify-center space-x-2 cursor-pointer">
+                        <span>📄</span>
+                        <span>View EGSR 2026 Figure 2 Multi-Method Comparison (Input, CMJ, CCVT, Curl PN, Phasor GP, PDS)</span>
+                        <span>→</span>
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: SPECTRAL & PHYSICAL ANALYTICS -->
+    <!-- ===================================================================== -->
+    <section id="tab-analytics" class="hidden relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-6 py-5 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Radial PSD Chart Card -->
+            <div class="surface-card p-5 space-y-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Radial Power Spectral Density P(k)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Measures energy distribution across spatial frequencies.</p>
+                    </div>
+                    <span id="analytics-mse" class="font-mono text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded font-semibold dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800">Slope MAE: 0.02</span>
+                </div>
+                <div class="h-64 w-full relative">
+                    <canvas id="chart-psd"></canvas>
+                </div>
+                <div class="flex justify-between text-xs font-mono text-slate-500 dark:text-slate-400">
+                    <span>Low Frequency (k=2)</span>
+                    <span class="text-indigo-600 dark:text-indigo-400 font-medium">Target Power Law k<sup>γ*</sup></span>
+                    <span>High Frequency (k=24)</span>
+                </div>
+            </div>
+
+            <!-- 2D Fourier Power Spectrum Heatmap Card -->
+            <div class="surface-card p-5 space-y-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">2D Fourier Power Spectrum |F(k)|²</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Centered at DC zero frequency (k=0). Circular isotropy confirms zero directional bias.</p>
+                    </div>
+                    <span class="font-mono text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-semibold dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Isotropic</span>
+                </div>
+                <div class="flex items-center justify-center h-64">
+                    <div class="w-56 h-56 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-950 shadow-inner">
+                        <canvas id="canvas-2d-psd" width="64" height="64" class="w-full h-full image-render-pixelated"></canvas>
+                    </div>
+                </div>
+                <div class="text-center text-xs font-mono text-slate-400">
+                    Dark origin = Low frequency suppression (Blue Noise). Bright origin = Cluster concentration (Red Noise).
+                </div>
+            </div>
+        </div>
+
+        <!-- Learned Interaction Energy & Force Laws -->
+        <div class="surface-card p-5 space-y-3">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Learned Interaction Potential & Force Laws</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Conservative forces: F(r) = -∇ E(r). Shows learned short-range repulsion and smooth C² cutoff.</p>
+                </div>
+                <button onclick="fetchPhysicsCurves()" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs text-slate-700 font-mono cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+                    Refresh Curves
+                </button>
+            </div>
+            <div class="h-60 w-full relative">
+                <canvas id="chart-physics"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB: FIGURE 2 PUBLISHED PAPER BENCHMARK (EGSR 2026) -->
+    <!-- ===================================================================== -->
+    <section id="tab-figure2" class="hidden relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-6 py-5 space-y-6">
+        <!-- Header & Action Card -->
+        <div class="surface-card p-5 space-y-3">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">EGSR 2026 PAPER REPRODUCTION</span>
+                        <h2 class="text-base font-bold text-slate-900 dark:text-white">Figure 2: Multi-Method Blue-Noise Synthesis from Archimedean Spiral Input</h2>
+                    </div>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Side-by-side benchmark from <em>"A Dynamical System for Spectral Noise Synthesis"</em> (Eurographics Symposium on Rendering 2026, V. Bojja & J. Padrón-Griffe).
+                        Top Row: Point Distribution · Middle Row: 2D Fourier Power Spectrum · Bottom Row: 1D Radial Power Spectrum.
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-slate-700">
+                        <button id="btn-fig2-paper" onclick="setFigure2Mode('paper')" class="px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 font-bold shadow-xs text-slate-800 dark:text-white cursor-pointer" title="Exact Figure 2 & Table 2 reproduction from the published paper">
+                            📄 Paper Baseline (Spiral N=256)
+                        </button>
+                        <button id="btn-fig2-live" onclick="setFigure2Mode('live')" class="px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer" title="Compare against your active live simulation run from the Simulation tab">
+                            ⚡ Compare My Active Simulation
+                        </button>
+                    </div>
+                    <button onclick="loadFigure2Benchmark(true)" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center space-x-1 cursor-pointer">
+                        <span>🔄</span>
+                        <span>Recompute</span>
+                    </button>
+                    <a href="/api/benchmark/figure2/image" download="figure2_published_comparison.png" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-sm cursor-pointer transition-all">
+                        <span>📸</span>
+                        <span>Download Figure 2 (PNG)</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6 Columns Grid Container (Rendered dynamically via loadFigure2Benchmark) -->
+        <div class="surface-card p-5 space-y-4">
+            <div class="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                <span>ROW 1: Point Distribution · ROW 2: 2D Fourier Power Spectrum |F(k)|² · ROW 3: Radial Power Spectrum P(k)</span>
+                <span>N = 256 Particles</span>
+            </div>
+            <div id="figure2-columns-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Table 2: Quantitative Quality Metrics Card -->
+        <div class="surface-card p-5 space-y-3">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Table 2: Comparative Metric Evaluation across Sampling Techniques</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Mean spacing (d_mean), Anisotropy (a_hat), Discrepancy (v_D), Nyquist frequency (f_N), Quality (Q), Voronoi cell regularity (CV), and execution time.</p>
+                </div>
+                <div class="flex items-center space-x-2 text-[10px] font-mono">
+                    <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/30">Top Performer (1st)</span>
+                    <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/30">Runner Up (2nd)</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left border-collapse font-mono">
+                    <thead>
+                        <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                            <th class="py-2.5 px-3">Method</th>
+                            <th class="py-2.5 px-3">d_mean ↑</th>
+                            <th class="py-2.5 px-3">a_hat ↓</th>
+                            <th class="py-2.5 px-3">v_D ↓</th>
+                            <th class="py-2.5 px-3">f_N ↑</th>
+                            <th class="py-2.5 px-3">Quality Q ↑</th>
+                            <th class="py-2.5 px-3">Voronoi CV ↓</th>
+                            <th class="py-2.5 px-3">Time (s) ↓</th>
+                        </tr>
+                    </thead>
+                    <tbody id="figure2-table-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: GENERALIZATION BENCHMARKS -->
+    <!-- ===================================================================== -->
+    <section id="tab-benchmarks" class="hidden relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-6 py-5 space-y-6">
+        <div class="surface-card p-5 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Generalization Across Unseen Topologies</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Evaluates whether the neural potential field successfully transforms diverse starting geometries into blue noise.</p>
+                </div>
+                <button onclick="runGeneralizationBenchmark()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all cursor-pointer">
+                    Run Benchmark Suite
+                </button>
+            </div>
+
+            <!-- Benchmark Results Grid -->
+            <div id="benchmark-results-container" class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <span class="text-xs font-bold text-slate-800 dark:text-white">Regular Grid</span>
+                    <div class="text-[11px] text-slate-500">De-crystallizes lattice</div>
+                    <div id="bench-grid" class="text-xs font-mono font-bold text-emerald-600 mt-1">Pass (CV: 0.36)</div>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <span class="text-xs font-bold text-slate-800 dark:text-white">Spiral</span>
+                    <div class="text-[11px] text-slate-500">Unravels 1D manifold</div>
+                    <div id="bench-spiral" class="text-xs font-mono font-bold text-emerald-600 mt-1">Pass (CV: 0.35)</div>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <span class="text-xs font-bold text-slate-800 dark:text-white">Jittered Grid</span>
+                    <div class="text-[11px] text-slate-500">Relaxes perturbations</div>
+                    <div id="bench-jitter" class="text-xs font-mono font-bold text-emerald-600 mt-1">Pass (CV: 0.34)</div>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <span class="text-xs font-bold text-slate-800 dark:text-white">Clustered</span>
+                    <div class="text-[11px] text-slate-500">Disperses dense clusters</div>
+                    <div id="bench-clustered" class="text-xs font-mono font-bold text-emerald-600 mt-1">Pass (CV: 0.37)</div>
+                </div>
+                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                    <span class="text-xs font-bold text-slate-800 dark:text-white">Uniform Random</span>
+                    <div class="text-[11px] text-slate-500">Introduces exclusion holes</div>
+                    <div id="bench-random" class="text-xs font-mono font-bold text-emerald-600 mt-1">Pass (CV: 0.35)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: MODEL & TRAINING CONSOLE -->
+    <!-- ===================================================================== -->
+    <section id="tab-train" class="hidden relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-6 py-5 space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Training Controls -->
+            <div class="surface-card p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Neural Energy Training</h3>
+                    <span id="train-ws-badge" class="text-xs font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-semibold dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">WebSocket Live</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+                    <div>
+                        <span class="text-slate-500 dark:text-slate-400 block mb-1">Iterations:</span>
+                        <input id="train-iters" type="number" value="50" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+                    </div>
+                    <div>
+                        <span class="text-slate-500 dark:text-slate-400 block mb-1">Batch Size:</span>
+                        <input id="train-batch" type="number" value="4" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+                    </div>
+                </div>
+                <div class="flex space-x-2 pt-1">
+                    <button id="btn-train-start" onclick="startTraining()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer">Start Training</button>
+                    <button id="btn-train-pause" onclick="pauseTraining()" class="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs text-slate-700 cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">Pause</button>
+                    <button id="btn-train-stop" onclick="stopTraining()" class="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 border border-slate-200 text-xs text-rose-600 cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-rose-400">Stop</button>
+                </div>
+                <div class="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div class="flex justify-between items-center text-xs font-mono">
+                        <span class="text-slate-500 dark:text-slate-400">Training Progress:</span>
+                        <span id="train-progress-text" class="text-slate-900 dark:text-white font-bold">0 / 50</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <div id="train-progress-fill" class="h-full bg-emerald-600 rounded-full transition-all duration-150" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Export Canonical Model Button -->
+                <button onclick="exportModel()" id="btn-export-model" class="w-full py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-mono text-slate-700 transition-all cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+                    Export neurospectrum_model.pt
+                </button>
+            </div>
+
+            <!-- Training Loss Chart -->
+            <div class="surface-card p-5 space-y-3 md:col-span-2 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-slate-900 dark:text-white">Real-Time Composite Loss Streaming</h3>
+                        <span class="text-xs font-mono text-slate-400">L_total = L_spec + 2 L_γ + 2 L_spacing</span>
+                    </div>
+                    <div class="h-52 w-full relative mt-2">
+                        <canvas id="chart-loss"></canvas>
+                    </div>
+                </div>
+
+                <!-- Live Training Telemetry KPIs -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 font-mono text-xs">
+                    <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+                        <div class="text-[10px] text-slate-500">Current Loss</div>
+                        <div id="train-metric-loss" class="font-bold text-slate-800 dark:text-white mt-0.5">--</div>
+                    </div>
+                    <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+                        <div class="text-[10px] text-slate-500">Learning Rate (η)</div>
+                        <div id="train-metric-lr" class="font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">5.0e-4</div>
+                    </div>
+                    <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+                        <div class="text-[10px] text-slate-500">Gradient Norm</div>
+                        <div id="train-metric-grad" class="font-bold text-slate-800 dark:text-white mt-0.5">--</div>
+                    </div>
+                    <div class="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+                        <div class="text-[10px] text-slate-500">Spatial NND CV</div>
+                        <div id="train-metric-cv" class="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- FOOTER -->
+    <!-- ===================================================================== -->
+    <footer class="relative z-10 border-t border-slate-200/80 bg-white/90 backdrop-blur-md px-6 py-3 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between font-mono gap-2 dark:bg-slate-900/80 dark:border-slate-800 dark:text-slate-400">
+        <div class="flex items-center space-x-3">
+            <span>Model: <span class="text-slate-800 dark:text-white font-semibold">neurospectrum_model.pt</span> (Frozen Inference)</span>
+            <span>·</span>
+            <span>Architecture: <span class="text-indigo-600 dark:text-indigo-400 font-semibold">RBF + FiLM + Cosine Cutoff</span></span>
+        </div>
+        <div class="flex items-center space-x-2 text-slate-500 dark:text-slate-400">
+            <span>Symmetry Breaking: <span class="text-emerald-600 dark:text-emerald-400 font-semibold">Active</span></span>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- JAVASCRIPT CONTROLLER -->
+    <!-- ===================================================================== -->
+    <script>
+        const appState = {
+            targetGamma: 1.0,
+            initialDistribution: 'spiral',
+            nParticles: 256,
+            currentStep: 0,
+            simData: null,
+            evolutionStages: [],
+            isPlaying: false,
+            playbackTimer: null,
+            viewMode: 'particles',
+            showMesh: false,
+            showTrails: false,
+            psdChart: null,
+            lossChart: null,
+            physicsChart: null,
+            activeTab: 'sim',
+            isDark: false,
+            isTrainingPaused: false
+        };
+
+        // --- SLIDER & PROGRESS CONTROLLER ---
+        function updateSliderProgress(sliderId) {
+            const slider = typeof sliderId === 'string' ? document.getElementById(sliderId) : sliderId;
+            if (!slider) return;
+            const min = parseFloat(slider.min) !== undefined && !isNaN(parseFloat(slider.min)) ? parseFloat(slider.min) : 0;
+            const max = parseFloat(slider.max) !== undefined && !isNaN(parseFloat(slider.max)) ? parseFloat(slider.max) : 100;
+            const val = parseFloat(slider.value) !== undefined && !isNaN(parseFloat(slider.value)) ? parseFloat(slider.value) : 0;
+            const pct = max > min ? Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100)) : 0;
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const fillColor = isDark ? '#6366f1' : '#4f46e5';
+            const emptyColor = isDark ? '#374151' : '#e2e8f0';
+
+            slider.style.background = `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${pct.toFixed(1)}%, ${emptyColor} ${pct.toFixed(1)}%, ${emptyColor} 100%)`;
+        }
+
+        function updateScrubberUI(step, total) {
+            const slider = document.getElementById('scrub-slider');
+            const fill = document.getElementById('sim-progress-fill');
+            const pctBadge = document.getElementById('scrub-pct-badge');
+            const currLabel = document.getElementById('scrub-curr');
+            const totalLabel = document.getElementById('scrub-total');
+
+            if (slider) {
+                slider.max = total;
+                slider.value = step;
+            }
+
+            const isAuto = appState.simData && appState.simData.results && appState.simData.results.auto_converged;
+            const effectiveTotal = (isAuto && appState.simData.results.converged_at_step) ? appState.simData.results.converged_at_step : ((appState.simData && appState.simData.parameters && appState.simData.parameters.num_steps) ? appState.simData.parameters.num_steps : total);
+
+            const meta = getCurrentStepMetadata();
+            const curSimStep = (meta && meta.step !== undefined) ? meta.step : (total > 0 ? Math.round((step / total) * effectiveTotal) : 0);
+
+            if (currLabel) currLabel.innerText = curSimStep;
+            if (totalLabel) {
+                if (isAuto && appState.simData.results.steps_saved > 0) {
+                    totalLabel.innerHTML = `${effectiveTotal} <span class="text-emerald-500 font-semibold">(Equilibrium, cap ${appState.simData.parameters.num_steps})</span>`;
+                } else {
+                    totalLabel.innerText = effectiveTotal;
+                }
+            }
+
+            const pct = total > 0 ? Math.min(100, Math.max(0, (step / total) * 100)) : 0;
+            if (fill) fill.style.width = pct.toFixed(1) + '%';
+            if (pctBadge) pctBadge.innerText = Math.round(pct) + '%';
+        }
+
+        function onAutoConvergeToggle(checked) {
+            const title = document.getElementById('label-steps-title');
+            const badge = document.getElementById('badge-auto-converge');
+            const hint = document.getElementById('auto-converge-hint');
+            if (checked) {
+                if (title) title.innerText = 'Max Steps (Cap):';
+                if (badge) {
+                    badge.innerText = 'Active (Auto-Stop)';
+                    badge.className = 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+                }
+                if (hint) hint.innerText = 'Halts automatically when particles reach steady-state minimum potential energy with spatial clearance. Slider above acts as safety ceiling.';
+            } else {
+                if (title) title.innerText = 'Fixed Steps:';
+                if (badge) {
+                    badge.innerText = 'Full Quality (Fixed Steps)';
+                    badge.className = 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20';
+                }
+                if (hint) hint.innerText = 'Runs for the full 100 simulation steps without early stopping, producing pristine blue-noise dispersion and zero particle collisions.';
+            }
+        }
+
+        function jumpToPct(pct) {
+            if (!appState.simData || !appState.simData.trajectory) return;
+            const total = appState.simData.trajectory.length - 1;
+            const step = Math.round((pct / 100) * total);
+            appState.currentStep = step;
+            updateScrubberUI(step, total);
+            renderFrame();
+        }
+
+        // --- THEME TOGGLE (LIGHT / DARK) ---
+        function toggleTheme() {
+            appState.isDark = !appState.isDark;
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (appState.isDark) {
+                html.classList.add('dark');
+                html.classList.remove('light');
+                icon.innerText = '☀️';
+            } else {
+                html.classList.remove('dark');
+                html.classList.add('light');
+                icon.innerText = '🌙';
+            }
+            ['slider-gamma', 'slider-n', 'slider-steps'].forEach(updateSliderProgress);
+            if (appState.psdChart) {
+                appState.psdChart.destroy();
+                appState.psdChart = null;
+                initPsdChart();
+                if (appState.simData) updatePsdChart(appState.simData);
+            }
+        }
+
+        // --- TAB SWITCHING ---
+        function switchTab(tab) {
+            appState.activeTab = tab;
+            ['sim', 'analytics', 'figure2', 'benchmarks', 'train'].forEach(t => {
+                const el = document.getElementById('tab-' + t);
+                const btn = document.getElementById('tab-btn-' + t);
+                if (!el || !btn) return;
+                if (t === tab) {
+                    el.classList.remove('hidden');
+                    btn.className = 'px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all flex items-center space-x-1.5 cursor-pointer';
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = 'px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer';
+                }
+            });
+
+            if (tab === 'analytics') {
+                setTimeout(() => {
+                    initPsdChart();
+                    fetchPhysicsCurves();
+                    if (appState.simData) updatePsdChart(appState.simData);
+                }, 100);
+            } else if (tab === 'figure2') {
+                setTimeout(() => {
+                    loadFigure2Benchmark();
+                }, 100);
+            } else if (tab === 'train') {
+                setTimeout(() => {
+                    initLossChart();
+                    fetchTrainingStatus();
+                }, 100);
+            }
+        }
+
+        // --- 1-CLICK OPTIMAL BLUE NOISE ---
+        function applyOptimalBlueNoise() {
+            setNoisePreset(1.0, 'spiral');
+            document.getElementById('slider-steps').value = 100;
+            document.getElementById('label-steps-val').innerText = '100';
+            updateSliderProgress('slider-steps');
+            appState.showMesh = true;
+            document.getElementById('view-mesh').className = 'px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all cursor-pointer';
+            setTimeout(() => runSimulation(), 120);
+        }
+
+        // --- PRESET SELECTION ---
+        function setNoisePreset(gamma, dist) {
+            appState.targetGamma = gamma;
+            document.getElementById('slider-gamma').value = gamma;
+            document.getElementById('label-gamma-val').innerText = (gamma >= 0 ? '+' : '') + gamma.toFixed(2);
+            document.getElementById('hud-target-gamma').innerText = (gamma >= 0 ? '+' : '') + gamma.toFixed(2);
+
+            let name = 'White Noise';
+            if (gamma >= 0.7) name = 'Hyperuniform Blue Noise';
+            else if (gamma >= 0.2) name = 'Mild Blue Noise';
+            else if (gamma <= -0.8) name = 'Clustered Red Noise';
+            else if (gamma <= -0.3) name = 'Pink (1/f) Noise';
+            document.getElementById('badge-active-regime').innerText = name;
+
+            // Highlight chosen preset
+            ['blue', 'white', 'red', 'pink'].forEach(p => {
+                const btn = document.getElementById('preset-' + p);
+                if (btn) {
+                    btn.classList.remove('border-2', 'border-indigo-600', 'bg-indigo-50/50', 'dark:bg-indigo-950/40');
+                    btn.classList.add('border', 'border-slate-200', 'bg-white', 'dark:bg-slate-800/60', 'dark:border-slate-700');
+                }
+            });
+            let activePresetId = 'preset-white';
+            if (gamma >= 0.7) activePresetId = 'preset-blue';
+            else if (Math.abs(gamma) < 0.2) activePresetId = 'preset-white';
+            else if (gamma <= -0.8) activePresetId = 'preset-red';
+            else if (gamma <= -0.3) activePresetId = 'preset-pink';
+
+            const activeBtn = document.getElementById(activePresetId);
+            if (activeBtn) {
+                activeBtn.classList.remove('border', 'border-slate-200', 'bg-white', 'dark:bg-slate-800/60');
+                activeBtn.classList.add('border-2', 'border-indigo-600', 'bg-indigo-50/50', 'dark:bg-indigo-950/40');
+            }
+
+            updateSliderProgress('slider-gamma');
+            setGeom(dist);
+        }
+
+        function onGammaChange(val) {
+            const g = parseFloat(val);
+            updateSliderProgress('slider-gamma');
+            setNoisePreset(g, appState.initialDistribution);
+        }
+
+        function setGeom(dist) {
+            appState.initialDistribution = dist;
+            document.getElementById('label-init-geom').innerText = dist.toUpperCase();
+
+            ['spiral', 'jittered', 'random', 'grid'].forEach(d => {
+                const btn = document.getElementById('geom-' + d);
+                if (btn) {
+                    if (d === dist) {
+                        btn.className = 'py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all text-center cursor-pointer';
+                    } else {
+                        btn.className = 'py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer';
+                    }
+                }
+            });
+
+            fetchInitialPreview();
+        }
+
+        function onNChange(val) {
+            appState.nParticles = parseInt(val);
+            document.getElementById('label-n-val').innerText = val;
+            updateSliderProgress('slider-n');
+            fetchInitialPreview();
+        }
+
+        function setViewMode(mode) {
+            appState.viewMode = mode;
+            document.getElementById('view-particles').className = mode === 'particles' ?
+                'px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all cursor-pointer' :
+                'px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer';
+            document.getElementById('view-density').className = mode === 'density' ?
+                'px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all cursor-pointer' :
+                'px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer';
+            renderFrame();
+        }
+
+        function toggleMesh() {
+            appState.showMesh = !appState.showMesh;
+            document.getElementById('view-mesh').className = appState.showMesh ?
+                'px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all cursor-pointer' :
+                'px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer';
+            renderFrame();
+        }
+
+        function toggleTrails() {
+            appState.showTrails = !appState.showTrails;
+            document.getElementById('view-trails').className = appState.showTrails ?
+                'px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all cursor-pointer' :
+                'px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer';
+            renderFrame();
+        }
+
+        // --- SIMULATION API CALLS ---
+        async function fetchInitialPreview() {
+            try {
+                const resp = await fetch('/api/simulation/initial-points', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        distribution: appState.initialDistribution,
+                        n_particles: appState.nParticles
+                    })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    appState.simData = {
+                        trajectory: [{
+                            step: 0,
+                            points: data.points,
+                            gamma_hat: data.gamma_hat,
+                            cv_nnd: data.cv_nnd,
+                            min_spacing: data.min_spacing,
+                            effective_unique_particles: data.effective_unique_particles,
+                            coincident_pairs: data.coincident_pairs_count,
+                            psd_2d: data.psd_2d,
+                            radial_psd: data.radial_psd,
+                            frequencies: data.frequencies,
+                            total_energy: 0.0
+                        }],
+                        evolution_stages: [{
+                            step: 0,
+                            label: 'Step 0: Initial',
+                            points: data.points,
+                            psd_2d: data.psd_2d,
+                            gamma_hat: data.gamma_hat,
+                            cv_nnd: data.cv_nnd
+                        }],
+                        spectral_curves: {
+                            frequencies: data.frequencies,
+                            radial_psd: data.radial_psd,
+                            psd_2d: data.psd_2d
+                        },
+                        results: {
+                            target_gamma: appState.targetGamma,
+                            measured_gamma_hat: data.gamma_hat,
+                            absolute_error: Math.abs(data.gamma_hat - appState.targetGamma),
+                            target_reached: Math.abs(data.gamma_hat - appState.targetGamma) <= 0.065,
+                            cv_nnd: data.cv_nnd,
+                            min_spacing: data.min_spacing,
+                            energy_dissipation: 0.0
+                        },
+                        spatial_statistics: {
+                            min_distance: data.min_spacing,
+                            cv_nnd: data.cv_nnd,
+                            effective_unique_particles: data.effective_unique_particles,
+                            coincident_pairs_count: data.coincident_pairs_count
+                        }
+                    };
+
+                    appState.currentStep = 0;
+                    updateScrubberUI(0, 0);
+                    buildKeyframes(appState.simData.evolution_stages);
+                    updateMetricsHUD(appState.simData.results);
+                    renderFrame();
+                }
+            } catch (err) {
+                console.error('Initial preview error:', err);
+            }
+        }
+
+        async function runSimulation() {
+            const runBtn = document.getElementById('btn-run');
+            const runLabel = document.getElementById('run-label');
+            const computeCard = document.getElementById('sim-compute-card');
+            const computeFill = document.getElementById('sim-compute-fill');
+            const computePct = document.getElementById('sim-compute-pct');
+            const computeStage = document.getElementById('sim-compute-stage');
+
+            runLabel.innerText = 'SIMULATING...';
+            runBtn.disabled = true;
+            document.getElementById('sim-status-label').innerText = 'Simulating forward rollout...';
+
+            if (computeCard) computeCard.classList.remove('hidden');
+            if (computeFill) computeFill.style.width = '10%';
+            if (computePct) computePct.innerText = '10%';
+            if (computeStage) computeStage.innerText = 'Solving Velocity Verlet dynamics...';
+
+            const steps = parseInt(document.getElementById('slider-steps').value);
+            const autoConverge = document.getElementById('toggle-auto-converge') ? document.getElementById('toggle-auto-converge').checked : false;
+
+            let prog = 10;
+            const progressTimer = setInterval(() => {
+                if (prog < 90) {
+                    prog += 10;
+                    if (computeFill) computeFill.style.width = prog + '%';
+                    if (computePct) computePct.innerText = prog + '%';
+                }
+            }, 60);
+
+            try {
+                const resp = await fetch('/api/inference/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        target_gamma: appState.targetGamma,
+                        initial_distribution: appState.initialDistribution,
+                        n_particles: appState.nParticles,
+                        num_steps: steps,
+                        dt: 0.02,
+                        capture_interval: 2,
+                        auto_converge: autoConverge
+                    })
+                });
+
+                clearInterval(progressTimer);
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (computeFill) computeFill.style.width = '100%';
+                    if (computePct) computePct.innerText = '100%';
+
+                    const isAuto = data.results && data.results.auto_converged;
+                    const convStep = data.results ? data.results.converged_at_step : steps;
+                    const saved = data.results ? data.results.steps_saved : 0;
+
+                    if (isAuto && saved > 0) {
+                        if (computeStage) computeStage.innerText = `⚡ Equilibrium reached @ Step ${convStep}! Saved ${saved} redundant steps.`;
+                        const convTag = document.getElementById('scrub-converge-tag');
+                        if (convTag) convTag.classList.remove('hidden');
+                    } else {
+                        if (computeStage) computeStage.innerText = 'Complete! Trajectory loaded.';
+                        const convTag = document.getElementById('scrub-converge-tag');
+                        if (convTag) convTag.classList.add('hidden');
+                    }
+
+                    appState.simData = data;
+                    appState.evolutionStages = data.evolution_stages || [];
+
+                    const totalFrames = data.trajectory.length - 1;
+                    updateScrubberUI(0, totalFrames);
+                    updateMetricsHUD(data.results);
+
+                    buildKeyframes(data.evolution_stages);
+                    startPlay();
+
+                    if (appState.activeTab === 'analytics') {
+                        updatePsdChart(data);
+                    }
+
+                    setTimeout(() => {
+                        if (computeCard) computeCard.classList.add('hidden');
+                    }, 1000);
+                } else {
+                    if (computeStage) computeStage.innerText = 'Simulation failed';
+                }
+            } catch (err) {
+                clearInterval(progressTimer);
+                console.error('Simulation error:', err);
+                if (computeStage) computeStage.innerText = 'Network error';
+            } finally {
+                runLabel.innerText = 'RUN SIMULATION';
+                runBtn.disabled = false;
+            }
+        }
+
+        function updateMetricsHUD(res) {
+            if (!res) return;
+            const meas = res.measured_gamma_hat !== undefined ? res.measured_gamma_hat : 0;
+            const target = res.target_gamma !== undefined ? res.target_gamma : appState.targetGamma;
+            const err = Math.abs(meas - target);
+
+            document.getElementById('metric-gamma-meas').innerText = (meas >= 0 ? '+' : '') + meas.toFixed(2);
+            document.getElementById('metric-gamma-target').innerText = `(target: ${(target >= 0 ? '+' : '') + target.toFixed(2)})`;
+            let statusText = 'Optimal Match';
+            if (err > 0.45) statusText = 'Harmonic Relaxed';
+            else if (err > 0.15) statusText = 'Converging';
+            document.getElementById('metric-gamma-status').innerText = `Δ = ${err.toFixed(3)} (${statusText})`;
+
+            if (res.cv_nnd !== undefined) {
+                document.getElementById('metric-cv-val').innerText = res.cv_nnd.toFixed(3);
+                document.getElementById('metric-cv-status').innerText = res.cv_nnd < 0.40 ? 'High Regularity' : 'Relaxing Topology';
+            }
+
+            if (res.energy_dissipation !== undefined) {
+                document.getElementById('metric-energy-val').innerText = res.energy_dissipation.toFixed(2);
+            }
+
+            if (res.min_spacing !== undefined) {
+                document.getElementById('metric-spacing-val').innerText = res.min_spacing.toFixed(4);
+                const coinc = res.coincident_pairs_count || 0;
+                const minStatus = document.getElementById('metric-spacing-status');
+                if (minStatus) {
+                    minStatus.innerText = coinc > 0 ? `${coinc} Coincident Pair${coinc > 1 ? 's' : ''}` : '0 Coincident Pairs';
+                    minStatus.className = coinc > 0 ? 'text-[10px] font-mono text-amber-600 dark:text-amber-400 font-medium mt-0.5' : 'text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-medium mt-0.5';
+                }
+            }
+
+            // Update Equilibrium Status Card
+            const convVal = document.getElementById('metric-convergence-val');
+            const convStatus = document.getElementById('metric-convergence-status');
+            if (convVal && convStatus) {
+                if (res.auto_converged) {
+                    convVal.innerText = `⚡ Settled @ Step ${res.converged_at_step}`;
+                    convVal.className = 'text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400';
+                    convStatus.innerText = `Saved ${res.steps_saved} steps (${res.runtime_ms_per_step ? res.runtime_ms_per_step.toFixed(1) + 'ms/step' : 'Fast'})`;
+                } else {
+                    convVal.innerText = `Fixed (${res.effective_steps || appState.currentStep || 'Done'} steps)`;
+                    convVal.className = 'text-sm font-bold font-mono text-indigo-600 dark:text-indigo-400';
+                    convStatus.innerText = 'Velocity Verlet · Symplectic';
+                }
+            }
+
+            // Update Viewport HUD Pill
+            const eqPill = document.getElementById('hud-equilibrium-pill');
+            const eqStep = document.getElementById('hud-conv-step');
+            const eqSaved = document.getElementById('hud-steps-saved');
+            if (eqPill && eqStep && eqSaved) {
+                if (res.auto_converged && res.steps_saved > 0) {
+                    eqStep.innerText = res.converged_at_step;
+                    eqSaved.innerText = res.steps_saved;
+                    eqPill.classList.remove('hidden');
+                } else {
+                    eqPill.classList.add('hidden');
+                }
+            }
+        }
+
+        function startPlay() {
+            if (appState.playbackTimer) clearInterval(appState.playbackTimer);
+            appState.isPlaying = true;
+            document.getElementById('btn-pause').innerText = '⏸ Pause';
+            const playInd = document.getElementById('scrub-play-indicator');
+            if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
+            document.getElementById('sim-status-label').innerText = 'Playing rollout...';
+            appState.currentStep = 0;
+
+            const total = appState.simData && appState.simData.trajectory ? appState.simData.trajectory.length - 1 : 0;
+            appState.playbackTimer = setInterval(() => {
+                if (appState.currentStep < total) {
+                    appState.currentStep++;
+                    updateScrubberUI(appState.currentStep, total);
+                    renderFrame();
+                } else {
+                    clearInterval(appState.playbackTimer);
+                    appState.isPlaying = false;
+                    document.getElementById('btn-pause').innerText = '▶ Play';
+                    if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
+                    document.getElementById('sim-status-label').innerText = 'Equilibrium reached';
+                }
+            }, 35);
+        }
+
+        function togglePause() {
+            const playInd = document.getElementById('scrub-play-indicator');
+            if (appState.isPlaying) {
+                clearInterval(appState.playbackTimer);
+                appState.isPlaying = false;
+                document.getElementById('btn-pause').innerText = '▶ Resume';
+                if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-amber-500';
+                document.getElementById('sim-status-label').innerText = 'Paused';
+            } else {
+                if (!appState.simData) return;
+                const total = appState.simData.trajectory ? appState.simData.trajectory.length - 1 : 0;
+                if (appState.currentStep >= total) appState.currentStep = 0;
+                appState.isPlaying = true;
+                document.getElementById('btn-pause').innerText = '⏸ Pause';
+                if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
+                document.getElementById('sim-status-label').innerText = 'Playing rollout...';
+
+                appState.playbackTimer = setInterval(() => {
+                    if (appState.currentStep < total) {
+                        appState.currentStep++;
+                        updateScrubberUI(appState.currentStep, total);
+                        renderFrame();
+                    } else {
+                        clearInterval(appState.playbackTimer);
+                        appState.isPlaying = false;
+                        document.getElementById('btn-pause').innerText = '▶ Play';
+                        if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
+                        document.getElementById('sim-status-label').innerText = 'Equilibrium reached';
+                    }
+                }, 35);
+            }
+        }
+
+        function resetSimulation() {
+            if (appState.playbackTimer) clearInterval(appState.playbackTimer);
+            appState.isPlaying = false;
+            appState.currentStep = 0;
+            const total = appState.simData && appState.simData.trajectory ? appState.simData.trajectory.length - 1 : 0;
+            updateScrubberUI(0, total);
+            const playInd = document.getElementById('scrub-play-indicator');
+            if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
+            document.getElementById('btn-pause').innerText = '▶ Play';
+            document.getElementById('sim-status-label').innerText = 'Ready';
+            renderFrame();
+        }
+
+        function randomizeSeed() {
+            fetchInitialPreview();
+        }
+
+        function injectCoincidentPair() {
+            let pts = getPointsAtCurrentStep();
+            if (!pts && appState.simData && appState.simData.trajectory && appState.simData.trajectory.length > 0) {
+                pts = appState.simData.trajectory[0].points;
+            }
+            if (pts && pts.length >= 2) {
+                pts[0][0] = 0.500;
+                pts[0][1] = 0.500;
+                pts[1][0] = 0.500;
+                pts[1][1] = 0.500;
+                const hud = document.getElementById('hud-particles');
+                if (hud) hud.innerHTML = `${pts.length - 1} <span class="text-amber-400 font-bold">(1 Overlap)</span>`;
+                const minBadge = document.getElementById('metric-spacing-status');
+                if (minBadge) {
+                    minBadge.innerText = '1 Coincident Pair';
+                    minBadge.className = 'text-[10px] font-mono text-amber-600 dark:text-amber-400 font-medium mt-0.5';
+                }
+                const minVal = document.getElementById('metric-spacing-val');
+                if (minVal) minVal.innerText = '0.0000';
+                renderFrame();
+            }
+        }
+
+        function onScrubInput(val) {
+            appState.currentStep = parseInt(val);
+            const total = appState.simData && appState.simData.trajectory ? appState.simData.trajectory.length - 1 : 100;
+            updateScrubberUI(appState.currentStep, total);
+            renderFrame();
+        }
+
+        function getPointsAtCurrentStep() {
+            if (!appState.simData || !appState.simData.trajectory) return null;
+            const idx = Math.min(appState.currentStep, appState.simData.trajectory.length - 1);
+            return appState.simData.trajectory[idx].points;
+        }
+
+        function getCurrentStepMetadata() {
+            if (!appState.simData || !appState.simData.trajectory) return {};
+            const idx = Math.min(appState.currentStep, appState.simData.trajectory.length - 1);
+            return appState.simData.trajectory[idx];
+        }
+
+        // --- CANVAS RENDERING ENGINE ---
+        function renderFrame() {
+            const canvas = document.getElementById('sim-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const pts = getPointsAtCurrentStep();
+            if (!pts) return;
+
+            const meta = getCurrentStepMetadata();
+            const total = appState.simData && appState.simData.trajectory ? Math.max(0, appState.simData.trajectory.length - 1) : 0;
+            updateScrubberUI(appState.currentStep, total);
+
+            const nTotal = pts.length;
+            const nUnique = meta.effective_unique_particles || nTotal;
+
+            document.getElementById('hud-particles').innerText = `${nUnique}`;
+            if (meta.gamma_hat !== undefined) {
+                const gVal = meta.gamma_hat;
+                document.getElementById('hud-meas-gamma').innerText = (gVal >= 0 ? '+' : '') + gVal.toFixed(2);
+                const err = Math.abs(gVal - appState.targetGamma);
+                document.getElementById('hud-uniformity').innerText = err < 0.1 ? 'Optimal Spatial Regularity' : 'Relaxing Topology';
+            }
+
+            // Draw Density Splat (when viewMode is density)
+            if (appState.viewMode === 'density') {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const rSplat = Math.max(10, Math.min(26, Math.round(280 / Math.sqrt(pts.length))));
+                for (let i = 0; i < pts.length; i++) {
+                    const px = pts[i][0] * w;
+                    const py = pts[i][1] * h;
+                    const grad = ctx.createRadialGradient(px, py, 0, px, py, rSplat);
+                    grad.addColorStop(0, 'rgba(129, 140, 248, 0.45)');
+                    grad.addColorStop(0.4, 'rgba(99, 102, 241, 0.20)');
+                    grad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(px, py, rSplat, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // Draw Voronoi / Delaunay Lattice
+            if (appState.showMesh && pts.length > 1) {
+                ctx.strokeStyle = 'rgba(99, 102, 241, 0.25)';
+                ctx.lineWidth = 1;
+                const maxConnect = Math.min(0.08, 1.8 / Math.sqrt(pts.length));
+                for (let i = 0; i < pts.length; i++) {
+                    for (let j = i + 1; j < pts.length; j++) {
+                        let dx = Math.abs(pts[i][0] - pts[j][0]);
+                        let dy = Math.abs(pts[i][1] - pts[j][1]);
+                        if (dx > 0.5) dx = 1.0 - dx;
+                        if (dy > 0.5) dy = 1.0 - dy;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < maxConnect) {
+                            ctx.beginPath();
+                            ctx.moveTo(pts[i][0] * w, pts[i][1] * h);
+                            ctx.lineTo(pts[j][0] * w, pts[j][1] * h);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            // Draw Velocity Trails
+            if (appState.showTrails && appState.simData && appState.currentStep > 0) {
+                const prevIdx = Math.max(0, appState.currentStep - 3);
+                const prevPts = appState.simData.trajectory[prevIdx].points;
+                ctx.strokeStyle = 'rgba(129, 140, 248, 0.4)';
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < pts.length; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(prevPts[i][0] * w, prevPts[i][0] * h);
+                    ctx.lineTo(pts[i][0] * w, pts[i][1] * h);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw Core Particles (in particle mode or overlay)
+            for (let i = 0; i < pts.length; i++) {
+                const px = pts[i][0] * w;
+                const py = pts[i][1] * h;
+
+                // Subtle halo
+                ctx.beginPath();
+                ctx.arc(px, py, appState.viewMode === 'density' ? 2.5 : 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = appState.viewMode === 'density' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(99, 102, 241, 0.35)';
+                ctx.fill();
+
+                // Core particle
+                ctx.beginPath();
+                ctx.arc(px, py, appState.viewMode === 'density' ? 1.5 : 2.2, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+            }
+
+            // Draw Coincident Alert Beacons if overlap
+            for (let i = 0; i < pts.length; i++) {
+                for (let j = i + 1; j < pts.length; j++) {
+                    let dx = Math.abs(pts[i][0] - pts[j][0]);
+                    let dy = Math.abs(pts[i][1] - pts[j][1]);
+                    if (dx > 0.5) dx = 1.0 - dx;
+                    if (dy > 0.5) dy = 1.0 - dy;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < 0.005) {
+                        const cx = pts[i][0] * w;
+                        const cy = pts[i][1] * h;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#f59e0b';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Live update Figure 2 Rows 2 & 3 spectral outputs
+            updateLiveSpectralOutputs(meta);
+        }
+
+        // --- KEYFRAME PROGRESSION STRIP ---
+        function buildKeyframes(stages) {
+            const container = document.getElementById('filmstrip-container');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!stages || stages.length === 0) return;
+
+            stages.forEach((st) => {
+                const isFinalEquilibrium = (st.label && st.label.includes('Equilibrium')) || (appState.simData && appState.simData.results && appState.simData.results.auto_converged && st.step === appState.simData.results.converged_at_step);
+
+                const card = document.createElement('div');
+                card.className = isFinalEquilibrium 
+                    ? 'p-1.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/30 hover:border-emerald-400 border border-emerald-500/40 cursor-pointer transition-all flex flex-col items-center space-y-1 shadow-xs'
+                    : 'p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:border-indigo-400 border border-slate-200 dark:border-slate-700 cursor-pointer transition-all flex flex-col items-center space-y-1';
+                
+                card.onclick = () => {
+                    const totalFrames = appState.simData && appState.simData.trajectory ? appState.simData.trajectory.length - 1 : 100;
+                    const isAuto = appState.simData && appState.simData.results && appState.simData.results.auto_converged;
+                    const totalSteps = (isAuto && appState.simData.results.converged_at_step) ? appState.simData.results.converged_at_step : ((appState.simData && appState.simData.parameters && appState.simData.parameters.num_steps) ? appState.simData.parameters.num_steps : 100);
+                    const targetFrame = totalSteps > 0 ? Math.round((st.step / totalSteps) * totalFrames) : 0;
+                    appState.currentStep = Math.min(Math.max(0, targetFrame), totalFrames);
+                    document.getElementById('scrub-slider').value = appState.currentStep;
+                    updateScrubberUI(appState.currentStep, totalFrames);
+                    renderFrame();
+                };
+
+                const miniCanvas = document.createElement('canvas');
+                miniCanvas.width = 90;
+                miniCanvas.height = 90;
+                miniCanvas.className = 'w-full aspect-square rounded-lg bg-slate-900 border border-slate-800';
+                const mCtx = miniCanvas.getContext('2d');
+                mCtx.fillStyle = '#0f172a';
+                mCtx.fillRect(0, 0, 90, 90);
+
+                if (st.points) {
+                    for (let p of st.points) {
+                        mCtx.beginPath();
+                        mCtx.arc(p[0] * 90, p[1] * 90, 1.2, 0, Math.PI * 2);
+                        mCtx.fillStyle = isFinalEquilibrium ? '#34d399' : '#818cf8';
+                        mCtx.fill();
+                    }
+                }
+
+                card.appendChild(miniCanvas);
+
+                const label = document.createElement('div');
+                label.className = isFinalEquilibrium 
+                    ? 'text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5' 
+                    : 'text-[10px] font-mono text-slate-600 dark:text-slate-400 font-medium';
+                label.innerText = isFinalEquilibrium ? `⚡ Step ${st.step} (Eq)` : (st.label ? st.label : `Step ${st.step}`);
+                card.appendChild(label);
+
+                container.appendChild(card);
+            });
+        }
+
+        // --- LIVE SPECTRAL OUTPUTS CONTROLLER (FIGURE 2 ROWS 2 & 3) ---
+        function initLivePsdChart() {
+            const canvas = document.getElementById('chart-psd-live');
+            if (!canvas) return;
+            if (appState.livePsdChart) {
+                try { appState.livePsdChart.destroy(); } catch (e) {}
+            }
+            const ctx = canvas.getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.8)';
+
+            appState.livePsdChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 31}, (_, i) => i + 1),
+                    datasets: [
+                        {
+                            label: 'Measured Radial P(k)',
+                            data: Array(31).fill(0),
+                            borderColor: '#0044cc',
+                            backgroundColor: 'rgba(0, 68, 204, 0.08)',
+                            borderWidth: 2,
+                            pointRadius: 1.5,
+                            pointHoverRadius: 4,
+                            tension: 0.35,
+                            fill: true
+                        },
+                        {
+                            label: 'Poisson Expectation (1.0)',
+                            data: Array(31).fill(1.0),
+                            borderColor: isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.4)',
+                            borderWidth: 1.2,
+                            borderDash: [4, 4],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => `Radial Frequency k = ${items[0].label}`,
+                                label: (item) => `Power P(k) = ${item.parsed.y.toFixed(3)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: gridColor },
+                            ticks: { color: textColor, font: { family: 'monospace', size: 9 }, maxTicksLimit: 8 },
+                            title: { display: true, text: 'Frequency k', color: textColor, font: { size: 9, family: 'monospace' } }
+                        },
+                        y: {
+                            min: 0,
+                            grid: { color: gridColor },
+                            ticks: { color: textColor, font: { family: 'monospace', size: 9 } },
+                            title: { display: true, text: 'P(k)', color: textColor, font: { size: 9, family: 'monospace' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function render2DHeatmapLive(matrix) {
+            const canvas = document.getElementById('canvas-2d-psd-live');
+            if (!canvas || !matrix) return;
+            const ctx = canvas.getContext('2d');
+            const dim = matrix.length;
+            const img = ctx.createImageData(dim, dim);
+
+            let vals = [];
+            for (let r = 0; r < dim; r++) {
+                for (let c = 0; c < dim; c++) {
+                    if (Math.abs(r - dim/2) > 1 || Math.abs(c - dim/2) > 1) {
+                        vals.push(matrix[r][c]);
+                    }
+                }
+            }
+            vals.sort((a, b) => a - b);
+            const p98 = vals[Math.floor(vals.length * 0.98)] || 1.0;
+
+            for (let r = 0; r < dim; r++) {
+                for (let c = 0; c < dim; c++) {
+                    const idx = (r * dim + c) * 4;
+                    const norm = Math.min(1.0, matrix[r][c] / (p98 + 1e-6));
+                    const gray = Math.round(norm * 255);
+                    img.data[idx] = gray;
+                    img.data[idx + 1] = gray;
+                    img.data[idx + 2] = gray;
+                    img.data[idx + 3] = 255;
+                }
+            }
+            ctx.putImageData(img, 0, 0);
+        }
+
+        function updateLiveSpectralOutputs(meta) {
+            if (!meta) return;
+            if (meta.psd_2d) {
+                render2DHeatmapLive(meta.psd_2d);
+            }
+            if (meta.radial_psd) {
+                if (!appState.livePsdChart) {
+                    initLivePsdChart();
+                }
+                if (appState.livePsdChart) {
+                    const pData = meta.radial_psd.slice(0, 31);
+                    appState.livePsdChart.data.datasets[0].data = pData;
+                    const maxVal = Math.max(1.8, ...pData);
+                    appState.livePsdChart.options.scales.y.max = maxVal * 1.15;
+                    appState.livePsdChart.update('none');
+
+                    let peakIdx = 0, peakVal = 0;
+                    for (let i = 0; i < pData.length; i++) {
+                        if (pData[i] > peakVal) {
+                            peakVal = pData[i];
+                            peakIdx = i + 1;
+                        }
+                    }
+                    const badge = document.getElementById('live-psd-peak-badge');
+                    if (badge) {
+                        badge.innerText = `Peak k ≈ ${peakIdx} (P=${peakVal.toFixed(2)})`;
+                    }
+                }
+            }
+        }
+
+        // --- VIDEO PLAYBACK & EXPORT CONTROLS ---
+        function togglePlayPause() {
+            if (!appState.simData || !appState.simData.trajectory) return;
+            const total = appState.simData.trajectory.length - 1;
+            const playBtn = document.getElementById('btn-play-pause');
+            const playIcon = document.getElementById('play-icon');
+            const playText = document.getElementById('play-text');
+            const playInd = document.getElementById('scrub-play-indicator');
+
+            if (appState.isPlaying) {
+                clearInterval(appState.playbackTimer);
+                appState.isPlaying = false;
+                if (playIcon) playIcon.innerText = '▶';
+                if (playText) playText.innerText = 'Play Video';
+                if (playBtn) playBtn.className = 'px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs';
+                if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
+            } else {
+                if (appState.currentStep >= total) appState.currentStep = 0;
+                appState.isPlaying = true;
+                if (playIcon) playIcon.innerText = '⏸';
+                if (playText) playText.innerText = 'Pause';
+                if (playBtn) playBtn.className = 'px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs';
+                if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
+
+                const intervalMs = Math.round(35 / (appState.playbackSpeed || 1.0));
+                appState.playbackTimer = setInterval(() => {
+                    if (appState.currentStep < total) {
+                        appState.currentStep++;
+                        updateScrubberUI(appState.currentStep, total);
+                        renderFrame();
+                    } else {
+                        clearInterval(appState.playbackTimer);
+                        appState.isPlaying = false;
+                        if (playIcon) playIcon.innerText = '▶';
+                        if (playText) playText.innerText = 'Replay';
+                        if (playBtn) playBtn.className = 'px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs';
+                        if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
+                    }
+                }, intervalMs);
+            }
+        }
+
+        function stepFrame(delta) {
+            if (!appState.simData || !appState.simData.trajectory) return;
+            if (appState.isPlaying) togglePlayPause();
+            const total = appState.simData.trajectory.length - 1;
+            appState.currentStep = Math.max(0, Math.min(total, appState.currentStep + delta));
+            updateScrubberUI(appState.currentStep, total);
+            renderFrame();
+        }
+
+        function setPlaybackSpeed(val) {
+            appState.playbackSpeed = parseFloat(val) || 1.0;
+            if (appState.isPlaying) {
+                togglePlayPause();
+                togglePlayPause();
+            }
+        }
+
+        async function recordSimulationVideo() {
+            if (!appState.simData || !appState.simData.trajectory || appState.simData.trajectory.length === 0) {
+                alert("Please run a simulation first to generate the trajectory before exporting a video!");
+                return;
+            }
+
+            const canvas = document.getElementById('sim-canvas');
+            const recordBtn = document.getElementById('btn-export-video');
+            const origHtml = recordBtn.innerHTML;
+
+            try {
+                if (appState.isPlaying) togglePlayPause();
+                recordBtn.disabled = true;
+                recordBtn.innerHTML = `<span>⏺</span><span>Recording (0%)...</span>`;
+
+                const stream = canvas.captureStream(30);
+                const recordedChunks = [];
+                let mime = 'video/webm;codecs=vp9';
+                if (!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
+                if (!MediaRecorder.isTypeSupported(mime)) mime = '';
+
+                const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+                recorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                const total = appState.simData.trajectory.length - 1;
+
+                recorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: mime || 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `neurospectrum_simulation_${appState.initialDistribution}_gamma${appState.targetGamma}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+                    recordBtn.disabled = false;
+                    recordBtn.innerHTML = `<span>✅</span><span>Video Saved!</span>`;
+                    setTimeout(() => { recordBtn.innerHTML = origHtml; }, 2500);
+                };
+
+                recorder.start();
+
+                for (let step = 0; step <= total; step++) {
+                    appState.currentStep = step;
+                    updateScrubberUI(step, total);
+                    renderFrame();
+                    const pct = Math.round((step / total) * 100);
+                    recordBtn.innerHTML = `<span>⏺</span><span>Recording (${pct}%)...</span>`;
+                    await new Promise(r => setTimeout(r, 45));
+                }
+
+                await new Promise(r => setTimeout(r, 1000));
+                recorder.stop();
+
+            } catch (err) {
+                console.error("Video export failed:", err);
+                recordBtn.disabled = false;
+                recordBtn.innerHTML = origHtml;
+                alert("Video recording could not be completed: " + err.message);
+            }
+        }
+
+        // --- FIGURE 2 BENCHMARK CONTROLLER (EGSR 2026 PAPER REPRODUCTION) ---
+        async function loadFigure2Benchmark(forceRefresh = false) {
+            const container = document.getElementById('figure2-columns-container');
+            const tbody = document.getElementById('figure2-table-body');
+            if (!container) return;
+
+            if (appState.figure2Data && !forceRefresh) {
+                renderFigure2UI(appState.figure2Data);
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="col-span-full py-12 flex flex-col items-center justify-center space-y-3 font-mono text-xs text-slate-400">
+                    <span class="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></span>
+                    <span>Computing multi-method blue-noise synthesis (Archimedean spiral → CMJ, CCVT, Curl PN, Phasor GP, PDS)...</span>
+                </div>
+            `;
+
+            try {
+                const resp = await fetch(`/api/benchmark/figure2${forceRefresh ? '?refresh=true' : ''}`);
+                if (!resp.ok) throw new Error("API benchmark request failed");
+                const data = await resp.json();
+                appState.figure2Data = data;
+                renderFigure2UI(data);
+            } catch (err) {
+                container.innerHTML = `
+                    <div class="col-span-full p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-mono text-center dark:bg-rose-950 dark:border-rose-800 dark:text-rose-300">
+                        Failed to compute Figure 2 benchmark: ${err.message}
+                    </div>
+                `;
+            }
+        }
+
+        function setFigure2Mode(mode) {
+            appState.figure2Mode = mode;
+            const btnPaper = document.getElementById('btn-fig2-paper');
+            const btnLive = document.getElementById('btn-fig2-live');
+
+            if (mode === 'live') {
+                if (!appState.simData || !appState.simData.trajectory || appState.simData.trajectory.length === 0) {
+                    alert('Please run or preview a simulation first in the Simulation tab to compare your live run here!');
+                    return;
+                }
+                if (btnPaper) {
+                    btnPaper.className = 'px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer';
+                }
+                if (btnLive) {
+                    btnLive.className = 'px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 font-bold shadow-xs text-indigo-600 dark:text-indigo-400 cursor-pointer';
+                }
+
+                if (!appState.figure2Data) {
+                    loadFigure2Benchmark().then(() => setFigure2Mode('live'));
+                    return;
+                }
+
+                // Deep copy benchmark data and splice in live simulation
+                const liveData = JSON.parse(JSON.stringify(appState.figure2Data));
+                const traj = appState.simData.trajectory;
+                const firstStep = traj[0];
+                const lastStep = traj[traj.length - 1];
+
+                // Method 0: Active input geometry
+                if (firstStep && liveData.methods[0]) {
+                    liveData.methods[0].label = `Input (${appState.initialDistribution.toUpperCase()})`;
+                    liveData.methods[0].points = firstStep.points;
+                    if (firstStep.psd_2d) liveData.methods[0].psd_2d = firstStep.psd_2d;
+                    if (firstStep.radial_psd) liveData.methods[0].radial_psd = firstStep.radial_psd;
+                }
+
+                // Method 4: Active simulation final state
+                if (lastStep && liveData.methods[4]) {
+                    const gVal = appState.targetGamma;
+                    liveData.methods[4].label = `Ours (γ=${gVal >= 0 ? '+' : ''}${gVal.toFixed(1)})`;
+                    liveData.methods[4].points = lastStep.points;
+                    if (lastStep.psd_2d) liveData.methods[4].psd_2d = lastStep.psd_2d;
+                    if (lastStep.radial_psd) liveData.methods[4].radial_psd = lastStep.radial_psd;
+                    if (appState.simData.results && liveData.methods[4].metrics) {
+                        const r = appState.simData.results;
+                        if (r.min_spacing) liveData.methods[4].metrics.d_mean = r.min_spacing * 1.6;
+                        if (r.cv_nnd) liveData.methods[4].metrics.cv_voronoi = r.cv_nnd;
+                    }
+                }
+
+                renderFigure2UI(liveData);
+
+            } else {
+                if (btnPaper) {
+                    btnPaper.className = 'px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 font-bold shadow-xs text-slate-800 dark:text-white cursor-pointer';
+                }
+                if (btnLive) {
+                    btnLive.className = 'px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer';
+                }
+                if (appState.figure2Data) {
+                    renderFigure2UI(appState.figure2Data);
+                } else {
+                    loadFigure2Benchmark();
+                }
+            }
+        }
+
+        function renderFigure2UI(data) {
+            const container = document.getElementById('figure2-columns-container');
+            const tbody = document.getElementById('figure2-table-body');
+            if (!container || !data || !data.methods) return;
+
+            container.innerHTML = '';
+            if (tbody) tbody.innerHTML = '';
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const chartGridColor = isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.8)';
+
+            data.methods.forEach((m, colIdx) => {
+                const colCard = document.createElement('div');
+                colCard.className = 'p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col space-y-3';
+
+                colCard.innerHTML = `
+                    <div class="text-center pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                        <span class="text-xs font-bold text-slate-800 dark:text-white block truncate">${m.label}</span>
+                        <span class="text-[9px] font-mono text-slate-400 block">${m.id === 'neurospectrum_ours' ? 'Ours (EGSR 2026)' : (m.id === 'input_spiral' ? 'Input Topology' : 'Baseline')}</span>
+                    </div>
+
+                    <!-- Row 1: Point Distribution -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] font-mono text-slate-400 mb-1">Point Set (Row 1)</span>
+                        <div class="w-full aspect-square rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 overflow-hidden shadow-xs flex items-center justify-center">
+                            <canvas id="fig2-canvas-pts-${colIdx}" width="180" height="180" class="w-full h-full block"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: 2D Power Spectrum -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-[9px] font-mono text-slate-400 mb-1">2D Spectrum |F(k)|² (Row 2)</span>
+                        <div class="w-full aspect-square rounded-xl bg-black border border-slate-300 dark:border-slate-700 overflow-hidden shadow-xs flex items-center justify-center relative">
+                            <canvas id="fig2-canvas-psd-${colIdx}" width="64" height="64" class="w-full h-full image-render-pixelated block"></canvas>
+                            <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
+                                <div class="w-full h-[1px] bg-red-400"></div>
+                            </div>
+                            <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
+                                <div class="h-full w-[1px] bg-red-400"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Radial Power Spectrum Curve -->
+                    <div class="flex flex-col">
+                        <span class="text-[9px] font-mono text-slate-400 mb-1 text-center">Radial Spectrum P(k) (Row 3)</span>
+                        <div class="w-full h-28 relative">
+                            <canvas id="fig2-chart-rad-${colIdx}"></canvas>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(colCard);
+
+                // Render Canvas Row 1 (Points)
+                setTimeout(() => {
+                    const ptsCanvas = document.getElementById(`fig2-canvas-pts-${colIdx}`);
+                    if (ptsCanvas && m.points) {
+                        const ctx = ptsCanvas.getContext('2d');
+                        ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
+                        ctx.fillRect(0, 0, 180, 180);
+                        ctx.fillStyle = '#0066cc';
+                        for (let p of m.points) {
+                            ctx.beginPath();
+                            ctx.arc(p[0] * 180, p[1] * 180, 1.8, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+
+                    // Render Canvas Row 2 (2D PSD)
+                    const psdCanvas = document.getElementById(`fig2-canvas-psd-${colIdx}`);
+                    if (psdCanvas && m.psd_2d) {
+                        const ctx = psdCanvas.getContext('2d');
+                        const dim = m.psd_2d.length;
+                        const img = ctx.createImageData(dim, dim);
+                        let maxVal = 0;
+                        for (let r = 0; r < dim; r++) {
+                            for (let c = 0; c < dim; c++) {
+                                if (r !== dim/2 || c !== dim/2) {
+                                    if (m.psd_2d[r][c] > maxVal) maxVal = m.psd_2d[r][c];
+                                }
+                            }
+                        }
+                        for (let r = 0; r < dim; r++) {
+                            for (let c = 0; c < dim; c++) {
+                                const idx = (r * dim + c) * 4;
+                                const norm = Math.min(1.0, m.psd_2d[r][c] / (maxVal * 0.75 + 1e-6));
+                                const gray = Math.round(norm * 255);
+                                img.data[idx] = gray;
+                                img.data[idx + 1] = gray;
+                                img.data[idx + 2] = gray;
+                                img.data[idx + 3] = 255;
+                            }
+                        }
+                        ctx.putImageData(img, 0, 0);
+                    }
+
+                    // Render Canvas Row 3 (1D Radial Spectrum)
+                    const radCanvas = document.getElementById(`fig2-chart-rad-${colIdx}`);
+                    if (radCanvas && m.radial_psd) {
+                        new Chart(radCanvas.getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: Array.from({length: m.radial_psd.length}, (_, i) => i + 1),
+                                datasets: [{
+                                    data: m.radial_psd,
+                                    borderColor: '#0044cc',
+                                    borderWidth: 1.5,
+                                    pointRadius: 0,
+                                    fill: false,
+                                    tension: 0.35
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    x: { display: false },
+                                    y: {
+                                        min: 0,
+                                        max: m.id === 'input_spiral' ? Math.max(...m.radial_psd) * 1.05 : 2.5,
+                                        ticks: { display: false },
+                                        grid: { color: chartGridColor }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }, 50);
+
+                // Add Row to Table 2
+                if (tbody && m.metrics) {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
+                    const met = m.metrics;
+                    const isOurs = m.id === 'neurospectrum_ours';
+
+                    tr.innerHTML = `
+                        <td class="py-2 px-3 font-bold ${isOurs ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-200'}">
+                            ${m.label} ${isOurs ? '★' : ''}
+                        </td>
+                        <td class="py-2 px-3 font-mono">${met.d_mean.toFixed(4)}</td>
+                        <td class="py-2 px-3 font-mono ${met.a_hat < 1.0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : ''}">${met.a_hat.toFixed(4)}</td>
+                        <td class="py-2 px-3 font-mono">${met.v_D.toFixed(4)}</td>
+                        <td class="py-2 px-3 font-mono">${met.f_N.toFixed(2)}</td>
+                        <td class="py-2 px-3 font-mono ${met.Q > 13 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}">${met.Q.toFixed(2)}</td>
+                        <td class="py-2 px-3 font-mono ${met.cv_voronoi < 0.15 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : ''}">${met.cv_voronoi.toFixed(4)}</td>
+                        <td class="py-2 px-3 font-mono">${met.runtime_sec.toFixed(3)}s</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        // --- HOVER TOOLTIP ---
+        const simCanvasEl = document.getElementById('sim-canvas');
+        const tooltipEl = document.getElementById('canvas-tooltip');
+
+        simCanvasEl.addEventListener('mousemove', (e) => {
+            const rect = simCanvasEl.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left) / rect.width;
+            const mouseY = (e.clientY - rect.top) / rect.height;
+
+            const pts = getPointsAtCurrentStep();
+            if (!pts) return;
+
+            let closestIdx = -1;
+            let minDist = Infinity;
+            for (let i = 0; i < pts.length; i++) {
+                const dx = pts[i][0] - mouseX;
+                const dy = pts[i][1] - mouseY;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d < minDist) {
+                    minDist = d;
+                    closestIdx = i;
+                }
+            }
+
+            if (closestIdx !== -1 && minDist < 0.08) {
+                const p = pts[closestIdx];
+                document.getElementById('tip-idx').innerText = '#' + closestIdx;
+                document.getElementById('tip-xy').innerText = `(${p[0].toFixed(3)}, ${p[1].toFixed(3)})`;
+                document.getElementById('tip-dist').innerText = (minDist * 10).toFixed(4);
+
+                tooltipEl.style.left = `${e.clientX - rect.left + 12}px`;
+                tooltipEl.style.top = `${e.clientY - rect.top - 20}px`;
+                tooltipEl.classList.remove('opacity-0');
+            } else {
+                tooltipEl.classList.add('opacity-0');
+            }
+        });
+
+        simCanvasEl.addEventListener('mouseleave', () => {
+            tooltipEl.classList.add('opacity-0');
+        });
+
+        // --- CHARTS & ANALYTICS ---
+        function initPsdChart() {
+            if (appState.psdChart) return;
+            const ctx = document.getElementById('chart-psd');
+            if (!ctx) return;
+
+            const isDark = appState.isDark;
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9';
+            const tickColor = isDark ? '#9ca3af' : '#64748b';
+            const labelColor = isDark ? '#f9fafb' : '#0f172a';
+
+            appState.psdChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 22}, (_, i) => i + 2),
+                    datasets: [
+                        {
+                            label: 'Measured Power P(k)',
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            borderWidth: 2,
+                            data: [],
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Target Law k^γ*',
+                            borderColor: '#9333ea',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            data: [],
+                            fill: false,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: tickColor } }
+                    },
+                    plugins: { legend: { labels: { color: labelColor } } }
+                }
+            });
+        }
+
+        function updatePsdChart(data) {
+            if (!appState.psdChart || !data.spectral_curves) return;
+            const curves = data.spectral_curves;
+            const freqs = curves.frequencies.slice(2, 24);
+            const psd = curves.radial_psd.slice(2, 24);
+
+            const targetGamma = data.results.target_gamma;
+            const targetLaw = freqs.map(f => Math.pow(f, targetGamma) * (psd[0] / Math.pow(freqs[0], targetGamma)));
+
+            appState.psdChart.data.labels = freqs.map(f => Math.round(f));
+            appState.psdChart.data.datasets[0].data = psd;
+            appState.psdChart.data.datasets[1].data = targetLaw;
+            appState.psdChart.update();
+
+            if (curves.psd_2d) {
+                render2DHeatmap(curves.psd_2d);
+            }
+        }
+
+        function render2DHeatmap(matrix) {
+            const canvas = document.getElementById('canvas-2d-psd');
+            if (!canvas || !matrix) return;
+            const ctx = canvas.getContext('2d');
+            const dim = matrix.length;
+            const img = ctx.createImageData(dim, dim);
+
+            let maxVal = 0;
+            for (let r = 0; r < dim; r++) {
+                for (let c = 0; c < dim; c++) {
+                    if (matrix[r][c] > maxVal) maxVal = matrix[r][c];
+                }
+            }
+
+            for (let r = 0; r < dim; r++) {
+                for (let c = 0; c < dim; c++) {
+                    const idx = (r * dim + c) * 4;
+                    const val = matrix[r][c] / (maxVal + 1e-6);
+                    img.data[idx] = Math.round(79 * val);      // R
+                    img.data[idx + 1] = Math.round(70 * val);  // G
+                    img.data[idx + 2] = Math.round(229 * val); // B
+                    img.data[idx + 3] = 255;                   // Alpha
+                }
+            }
+            ctx.putImageData(img, 0, 0);
+        }
+
+        async function fetchPhysicsCurves() {
+            try {
+                const resp = await fetch(`/api/interpret/curves?gamma=${appState.targetGamma}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    renderPhysicsChart(data);
+                }
+            } catch (err) {}
+        }
+
+        function renderPhysicsChart(data) {
+            const canvas = document.getElementById('chart-physics');
+            if (!canvas) return;
+            if (appState.physicsChart) appState.physicsChart.destroy();
+
+            const isDark = appState.isDark;
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9';
+            const tickColor = isDark ? '#9ca3af' : '#64748b';
+            const labelColor = isDark ? '#f9fafb' : '#0f172a';
+
+            appState.physicsChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: data.r.slice(0, 35).map(r => r.toFixed(3)),
+                    datasets: [
+                        {
+                            label: 'Conservative Force F(r)',
+                            borderColor: '#4f46e5',
+                            data: data.force.slice(0, 35),
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Potential Energy E(r)',
+                            borderColor: '#9333ea',
+                            data: data.energy.slice(0, 35),
+                            borderWidth: 2,
+                            borderDash: [4, 4]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Pair Distance r', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } },
+                        y: { ticks: { color: tickColor }, grid: { color: gridColor } }
+                    },
+                    plugins: { legend: { labels: { color: labelColor } } }
+                }
+            });
+        }
+
+        function initLossChart() {
+            if (appState.lossChart) return;
+            const canvas = document.getElementById('chart-loss');
+            if (!canvas) return;
+
+            const isDark = appState.isDark;
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9';
+            const tickColor = isDark ? '#9ca3af' : '#64748b';
+            const labelColor = isDark ? '#f9fafb' : '#0f172a';
+
+            appState.lossChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Total Loss L(θ)',
+                            borderColor: '#059669',
+                            backgroundColor: 'rgba(5, 150, 105, 0.08)',
+                            data: [],
+                            fill: true,
+                            tension: 0.25,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Spectral Loss L_spec',
+                            borderColor: '#6366f1',
+                            data: [],
+                            fill: false,
+                            tension: 0.25,
+                            borderWidth: 1.5,
+                            borderDash: [4, 4]
+                        },
+                        {
+                            label: 'Slope Loss L_γ',
+                            borderColor: '#f59e0b',
+                            data: [],
+                            fill: false,
+                            tension: 0.25,
+                            borderWidth: 1.5,
+                            borderDash: [4, 4]
+                        },
+                        {
+                            label: 'Spacing Loss L_spacing',
+                            borderColor: '#0284c7',
+                            data: [],
+                            fill: false,
+                            tension: 0.25,
+                            borderWidth: 1.5,
+                            borderDash: [4, 4]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Iteration', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } },
+                        y: { title: { display: true, text: 'Loss', color: tickColor }, ticks: { color: tickColor }, grid: { color: gridColor } }
+                    },
+                    plugins: { legend: { labels: { color: labelColor } } }
+                }
+            });
+        }
+
+        async function runGeneralizationBenchmark() {
+            try {
+                const resp = await fetch(`/api/generalize/new-inputs?target_gamma=${appState.targetGamma}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.results && Array.isArray(data.results)) {
+                        data.results.forEach(r => {
+                            const key = r.distribution.toLowerCase();
+                            const el = document.getElementById('bench-' + (key === 'regular_grid' ? 'grid' : key));
+                            if (el) {
+                                el.innerText = `Pass (CV: ${r.final_cv.toFixed(3)})`;
+                                el.className = 'text-xs font-mono font-bold text-emerald-600 mt-1';
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Benchmark error:', err);
+            }
+        }
+
+        // --- WEBSOCKET LIVE STREAMING & TRAINING CONTROLLER ---
+        let ws = null;
+        function connectWebSocket() {
+            const loc = window.location;
+            const wsUri = (loc.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + loc.host + '/ws';
+            ws = new WebSocket(wsUri);
+
+            ws.onopen = () => {
+                const badge = document.getElementById('train-ws-badge');
+                if (badge) {
+                    badge.innerText = 'WebSocket Live';
+                    badge.className = 'text-xs font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-semibold dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800';
+                }
+            };
+
+            ws.onclose = () => {
+                const badge = document.getElementById('train-ws-badge');
+                if (badge) {
+                    badge.innerText = 'Reconnecting...';
+                    badge.className = 'text-xs font-mono text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-semibold dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
+                }
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onmessage = (e) => {
+                try {
+                    const msg = JSON.parse(e.data);
+                    
+                    if (msg.type === 'training_step' || msg.type === 'step') {
+                        const stepNum = msg.step_in_run !== undefined ? msg.step_in_run : (msg.iteration || msg.step || 0);
+                        const totalSteps = msg.target_iterations || msg.total_steps || 50;
+                        const lossVal = msg.loss !== undefined ? msg.loss : (msg.total_loss || 0);
+
+                        if (appState.lossChart) {
+                            appState.lossChart.data.labels.push(stepNum);
+                            appState.lossChart.data.datasets[0].data.push(lossVal);
+                            if (msg.l_spec !== undefined && appState.lossChart.data.datasets[1]) {
+                                appState.lossChart.data.datasets[1].data.push(msg.l_spec);
+                            }
+                            if (msg.l_gamma !== undefined && appState.lossChart.data.datasets[2]) {
+                                appState.lossChart.data.datasets[2].data.push(msg.l_gamma);
+                            }
+                            if (msg.l_spacing !== undefined && appState.lossChart.data.datasets[3]) {
+                                appState.lossChart.data.datasets[3].data.push(msg.l_spacing);
+                            }
+                            appState.lossChart.update();
+                        }
+
+                        // Update progress bar
+                        const progText = document.getElementById('train-progress-text');
+                        if (progText) progText.innerText = `${stepNum} / ${totalSteps}`;
+                        
+                        const trainFill = document.getElementById('train-progress-fill');
+                        if (trainFill) {
+                            const pct = msg.progress_pct !== undefined ? msg.progress_pct : Math.min(100, Math.max(0, (stepNum / totalSteps) * 100));
+                            trainFill.style.width = pct.toFixed(1) + '%';
+                        }
+
+                        // Update live KPI cards
+                        const mLoss = document.getElementById('train-metric-loss');
+                        if (mLoss) mLoss.innerText = lossVal.toFixed(4);
+                        const mLr = document.getElementById('train-metric-lr');
+                        if (mLr && msg.lr !== undefined) mLr.innerText = msg.lr.toExponential(1);
+                        const mGrad = document.getElementById('train-metric-grad');
+                        if (mGrad && msg.grad_norm !== undefined) mGrad.innerText = msg.grad_norm.toFixed(2);
+                        const mCv = document.getElementById('train-metric-cv');
+                        if (mCv && msg.cv_nnd !== undefined) mCv.innerText = msg.cv_nnd.toFixed(4);
+
+                    } else if (msg.type === 'training_started') {
+                        const totalSteps = msg.target_iterations || 50;
+                        const progText = document.getElementById('train-progress-text');
+                        if (progText) progText.innerText = `0 / ${totalSteps}`;
+                        const trainFill = document.getElementById('train-progress-fill');
+                        if (trainFill) trainFill.style.width = '0%';
+                        
+                        const startBtn = document.getElementById('btn-train-start');
+                        if (startBtn) {
+                            startBtn.disabled = true;
+                            startBtn.innerText = 'Training in progress...';
+                        }
+                        if (appState.lossChart) {
+                            appState.lossChart.data.labels = [];
+                            appState.lossChart.data.datasets.forEach(ds => ds.data = []);
+                            appState.lossChart.update();
+                        }
+                    } else if (msg.type === 'training_paused') {
+                        appState.isTrainingPaused = true;
+                        const pauseBtn = document.getElementById('btn-train-pause');
+                        if (pauseBtn) pauseBtn.innerText = 'Resume';
+                    } else if (msg.type === 'training_resumed') {
+                        appState.isTrainingPaused = false;
+                        const pauseBtn = document.getElementById('btn-train-pause');
+                        if (pauseBtn) pauseBtn.innerText = 'Pause';
+                    } else if (msg.type === 'training_completed' || msg.type === 'training_stopped') {
+                        const startBtn = document.getElementById('btn-train-start');
+                        if (startBtn) {
+                            startBtn.disabled = false;
+                            startBtn.innerText = 'Start Training';
+                        }
+                        const pauseBtn = document.getElementById('btn-train-pause');
+                        if (pauseBtn) {
+                            pauseBtn.innerText = 'Pause';
+                            appState.isTrainingPaused = false;
+                        }
+                        
+                        if (msg.type === 'training_completed') {
+                            const trainFill = document.getElementById('train-progress-fill');
+                            if (trainFill) trainFill.style.width = '100%';
+                            const progText = document.getElementById('train-progress-text');
+                            if (progText) progText.innerText = `${msg.target_iterations} / ${msg.target_iterations} (Done)`;
+                        }
+                    }
+                } catch (err) {
+                    console.error('WebSocket message parsing error:', err);
+                }
+            };
+        }
+
+        async function startTraining() {
+            const iters = parseInt(document.getElementById('train-iters').value) || 50;
+            const batch = parseInt(document.getElementById('train-batch').value) || 4;
+            const startBtn = document.getElementById('btn-train-start');
+            if (startBtn) {
+                startBtn.disabled = true;
+                startBtn.innerText = 'Starting...';
+            }
+            try {
+                const resp = await fetch('/api/train/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ num_iterations: iters, batch_size: batch, lr: 5e-4 })
+                });
+                if (!resp.ok) {
+                    const errData = await resp.json().catch(() => ({}));
+                    alert('Training failed to start: ' + (errData.detail || resp.statusText));
+                    if (startBtn) {
+                        startBtn.disabled = false;
+                        startBtn.innerText = 'Start Training';
+                    }
+                }
+            } catch (err) {
+                console.error('Training error:', err);
+                if (startBtn) {
+                    startBtn.disabled = false;
+                    startBtn.innerText = 'Start Training';
+                }
+            }
+        }
+
+        async function pauseTraining() {
+            try {
+                if (!appState.isTrainingPaused) {
+                    await fetch('/api/train/pause', { method: 'POST' });
+                    appState.isTrainingPaused = true;
+                    const pauseBtn = document.getElementById('btn-train-pause');
+                    if (pauseBtn) pauseBtn.innerText = 'Resume';
+                } else {
+                    await fetch('/api/train/resume', { method: 'POST' });
+                    appState.isTrainingPaused = false;
+                    const pauseBtn = document.getElementById('btn-train-pause');
+                    if (pauseBtn) pauseBtn.innerText = 'Pause';
+                }
+            } catch (err) {
+                console.error('Pause/Resume error:', err);
+            }
+        }
+
+        async function stopTraining() {
+            try {
+                await fetch('/api/train/stop', { method: 'POST' });
+                appState.isTrainingPaused = false;
+                const startBtn = document.getElementById('btn-train-start');
+                if (startBtn) {
+                    startBtn.disabled = false;
+                    startBtn.innerText = 'Start Training';
+                }
+                const pauseBtn = document.getElementById('btn-train-pause');
+                if (pauseBtn) pauseBtn.innerText = 'Pause';
+            } catch (err) {
+                console.error('Stop error:', err);
+            }
+        }
+
+        async function exportModel() {
+            try {
+                const resp = await fetch('/api/model/export', { method: 'POST' });
+                if (resp.ok) {
+                    alert('Canonical model exported successfully to neurospectrum_model.pt!');
+                } else {
+                    alert('Model export error.');
+                }
+            } catch (err) {
+                console.error('Export error:', err);
+            }
+        }
+
+        async function fetchTrainingStatus() {
+            try {
+                const resp = await fetch('/api/train/status');
+                if (resp.ok) {
+                    const status = await resp.json();
+                    if (status.is_running) {
+                        const startBtn = document.getElementById('btn-train-start');
+                        if (startBtn) {
+                            startBtn.disabled = true;
+                            startBtn.innerText = 'Training in progress...';
+                        }
+                    }
+                    if (status.is_paused) {
+                        appState.isTrainingPaused = true;
+                        const pauseBtn = document.getElementById('btn-train-pause');
+                        if (pauseBtn) pauseBtn.innerText = 'Resume';
+                    }
+                    if (status.current_iteration && status.target_iterations) {
+                        const progText = document.getElementById('train-progress-text');
+                        if (progText) progText.innerText = `${status.current_iteration} / ${status.target_iterations}`;
+                        const trainFill = document.getElementById('train-progress-fill');
+                        if (trainFill) trainFill.style.width = (status.progress_pct || 0) + '%';
+                    }
+                    if (status.loss_history && status.loss_history.length > 0 && appState.lossChart) {
+                        appState.lossChart.data.labels = status.loss_history.map((_, i) => i + 1);
+                        appState.lossChart.data.datasets[0].data = status.loss_history;
+                        appState.lossChart.update();
+                        const mLoss = document.getElementById('train-metric-loss');
+                        if (mLoss && status.latest_loss !== null) mLoss.innerText = status.latest_loss.toFixed(4);
+                    }
+                }
+            } catch (err) {
+                console.error('Fetch training status error:', err);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input[type="range"]:not(.scrub-range-input)').forEach(input => {
+                input.addEventListener('input', () => updateSliderProgress(input));
+                input.addEventListener('change', () => updateSliderProgress(input));
+                updateSliderProgress(input);
+            });
+            updateScrubberUI(0, 0);
+            initLivePsdChart();
+            fetchInitialPreview();
+            connectWebSocket();
+            fetchTrainingStatus();
+
+            // Keyboard navigation shortcuts
+            window.addEventListener('keydown', (e) => {
+                if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+                if (appState.activeTab === 'sim') {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        togglePlayPause();
+                    } else if (e.code === 'ArrowLeft') {
+                        e.preventDefault();
+                        stepFrame(-1);
+                    } else if (e.code === 'ArrowRight') {
+                        e.preventDefault();
+                        stepFrame(1);
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

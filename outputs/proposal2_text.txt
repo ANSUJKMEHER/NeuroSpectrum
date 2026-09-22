@@ -1,0 +1,218 @@
+﻿Refined Research Proposal
+Learning Continuous Spectral Interaction Laws for
+Controllable Point Distributions
+Research direction: retain the working neural-energy prototype, but refine the scientific contribution around continuous
+spectral conditioning, unseen-target generalization, learned interaction laws, spatial regularity, amortized efficiency, and
+progressive scalability.
+1. Executive Summary
+The current prototype learns a pairwise neural interaction energy conditioned on a target spectrum, obtains particle forces
+by differentiating that energy, evolves particles, rasterizes the final point set, computes its FFT/PSD, and trains through the
+spectral objective. This is an excellent foundation, but the basic mechanism alone should not be presented as the main
+novelty: neural interaction-energy and learned force-field constructions already have precedent.
+The refined research question is stronger: Can one conditional neural energy field learn a continuous family of
+particle interaction laws that generates point distributions for unseen target spectra, preserves measurable spatial
+regularity, exposes interpretable interaction behavior, and reduces the cost of producing new target distributions
+compared with optimizing every target from scratch?
+2. Research Problem
+Point distributions are important in rendering, sampling, stippling, halftoning, and procedural graphics. Their spatial
+behavior can be characterized using power spectral density. Classical optimization can target a desired PSD, but normally
+requires a new optimization process for each target. The proposed method instead learns an interaction law once and
+conditions it on the desired spectral parameter ╬│.
+The central distinction is therefore amortized conditional generation, rather than simply proving that a neural network
+can fit one spectrum.
+3. Novelty Position
+What is not sufficient as the primary novelty
+ΓÇó An MLP representing a pairwise energy.
+ΓÇó Computing force as the negative gradient of the energy.
+ΓÇó Backpropagating through unrolled particle dynamics.
+ΓÇó Optimizing a rasterized PSD loss alone.
+What should become the research contribution
+ΓÇó Continuous spectral interaction learning: a single model represents a family of interaction laws across ╬│.
+ΓÇó Unseen-spectrum generalization: evaluate ╬│ values not explicitly used during training.
+ΓÇó Interaction-law interpretation: analyze E(r,╬│) and F(r,╬│) rather than treating the network as a black box.
+ΓÇó Learned regularity: investigate whether appropriate short-range behavior emerges from training.
+ΓÇó Amortized efficiency: compare neural generation for new targets with classical per-target optimization.
+ΓÇó Progressive generalization: extend to local, anisotropic, and spatially varying spectra only after the core result is
+established.
+4. Refined Pipeline
+Target spectrum ╬│ ΓåÆ condition encoder ΓåÆ conditional pairwise energy E╬╕(rij,╬│) ΓåÆ conservative
+force Fi = ΓêÆΓêéE/Γêéxi ΓåÆ unrolled dynamics ΓåÆ point set XT ΓåÆ differentiable rasterization ΓåÆ
+FFT/PSD ΓåÆ spectral + regularity losses ΓåÆ backpropagation.
+
+--- PAGE BREAK ---
+For the first version, rij = ||xiΓêÆxj||. The pairwise formulation is permutation invariant and makes the learned interaction law
+directly visualizable.
+5. Conditional Neural Energy Model
+Start with a compact MLP:
+Eij = MLP╬╕(rij, ╬│)
+The total energy is summed over particle pairs and forces are obtained using automatic differentiation:
+Fi = ΓêÆΓêéEtotal/Γêéxi
+ΓÇó Start with a fully learned energy; do not assume a hand-designed repulsive potential.
+ΓÇó Use a small model so learned energy/force curves remain easy to inspect.
+ΓÇó Introduce a stabilizer only as a clearly reported fallback/ablation if collapse occurs.
+ΓÇó Track energy, force magnitude, minimum spacing, and particle displacement during dynamics.
+6. Most Important Refinement: Continuous ╬│
+Instead of training only on discrete blue/white/red-like categories, use ╬│ as a continuous control variable. A practical starting
+range is ╬│ Γêê [ΓêÆ2,+2]. Random ╬│ sampling during training is preferable to only five fixed values.
+ΓÇó Train over a continuous/random distribution of ╬│.
+ΓÇó Hold out intermediate values such as ΓêÆ1.5, ΓêÆ0.7, 0.3, 0.8, and +1.5.
+ΓÇó Plot target ╬│ against achieved spectral slope and PSD error.
+ΓÇó Measure whether spatial statistics change smoothly with ╬│.
+ΓÇó Test extrapolation separately from interpolation.
+This experiment is the clearest way to show that the network learns a conditional interaction family rather than memorizing
+a small set of spectral classes.
+7. Loss Function
+Use a minimum combined objective:
+L = ╬╗PSD Llog-PSD + ╬╗slope Lslope + ╬╗NND LCV-NND
+ΓÇó Log-PSD loss: measures spectral fidelity while reducing domination by large spectral magnitudes.
+ΓÇó Slope loss: directly measures the target spectral trend.
+ΓÇó NND coefficient of variation: discourages pathological particle clustering.
+The regularity term is important because differentiable Gaussian-splat rasterization can hide sub-kernel particle collapse
+from a purely image/PSD-based loss.
+8. Learned Regularity Study
+Run three controlled versions:
+ΓÇó A ΓÇö spectral loss only.
+ΓÇó B ΓÇö spectral + nearest-neighbor regularity.
+ΓÇó C ΓÇö spectral + regularity + fixed hand-designed repulsion.
+Compare PSD error, pair-correlation g(r), NND CV, discrepancy/Ripley statistics, visual quality, and stability. If B learns
+sensible short-range behavior without fixed repulsion, that is stronger evidence that the energy field has learned useful
+interaction structure.
+9. Interpret the Learned Energy
+For a grid of ╬│ values, produce:
+ΓÇó E(r,╬│) versus r.
+
+--- PAGE BREAK ---
+ΓÇó F(r,╬│) versus r.
+ΓÇó Heat maps of E(r,╬│) and F(r,╬│).
+ΓÇó Changes in attractive/repulsive regions as ╬│ changes.
+These figures should answer a central scientific question: what interaction law did the network actually learn?
+10. Required Classical Baseline
+Implement direct per-target classical particle-position optimization using the same domain, particle count, spectral
+objective, rasterization, FFT resolution, boundary handling, and regularity measures wherever possible.
+ΓÇó Measure final PSD/slope error.
+ΓÇó Measure spatial regularity.
+ΓÇó Measure optimization time for every new ╬│.
+ΓÇó Measure neural inference time for new ╬│ after training.
+Do not claim the neural approach is better simply because it works. The important comparison is quality, generalization,
+and amortized cost.
+11. Dynamics and Stability
+Begin with Euler or semi-implicit integration and approximately 50ΓÇô100 unrolled steps. Monitor total energy, force norms,
+minimum spacing, loss, and displacement.
+For ideal continuous gradient flow dX/dt = ΓêÆΓêçE, dE/dt = ΓêÆ||ΓêçE||┬▓ Γëñ 0. This does not by itself establish global convergence for
+the complete learned, discretized system, so the paper should report empirical stability rather than overclaim convergence.
+12. Scalability
+Full pairwise interaction is O(N┬▓). Start with N=256 for validation. Then test larger point sets and introduce
+k-nearest-neighbor interactions with k=16, 32, and 64.
+ΓÇó Compare runtime and quality.
+ΓÇó Test whether local interactions preserve the learned spectrum.
+ΓÇó Target N=1,024 and N=4,096 or larger when resources permit.
+13. Advanced Extension: Anisotropic Spectra
+After isotropic control is reliable, condition on c=[╬│,╬▒,╬╕] and use the relative vector rather than distance alone:
+Eij = MLP╬╕(Γêåxij, c)
+This allows non-radially-symmetric target PSDs and provides a stronger demonstration of conditional interaction learning.
+14. Advanced Extension: Spatially Varying Spectra
+Use a spatial condition ╬│(x,y) so different regions of one domain request different spectral behavior. A compelling
+demonstration is a smooth red-like ΓåÆ white-like ΓåÆ blue-like transition in one point distribution. This should be attempted
+only after the global scalar-╬│ model is strong.
+15. Evaluation Protocol
+ΓÇó Spectral: log-PSD MSE, slope error, frequency-band error.
+ΓÇó Spatial: pair-correlation g(r), NND CV, discrepancy, and/or Ripley's K/L.
+ΓÇó Generalization: unseen interpolation and separate extrapolation tests.
+ΓÇó Efficiency: training cost, new-target generation time, classical per-target optimization time.
+ΓÇó Robustness: at least three random seeds, initialization changes, particle-count changes, and boundary variations.
+ΓÇó Visual: consistent point rendering plus at least one graphics/rendering application.
+
+--- PAGE BREAK ---
+16. Essential Ablations
+ΓÇó Neural energy without stabilizer vs fixed repulsion.
+ΓÇó Energy-gradient force vs directly predicted force.
+ΓÇó Spectral-only vs spectral + regularity loss.
+ΓÇó Global pairwise vs kNN local interactions.
+ΓÇó Different boundary treatments.
+ΓÇó Discrete ╬│ training vs continuous/random ╬│ training.
+17. Software Architecture
+Module
+Purpose
+data.py
+Target spectra and continuous ╬│ sampling
+energy.py
+Conditional pairwise neural energy
+dynamics.py
+Force computation and particle integration
+rasterize.py
+Differentiable point rasterization
+spectrum.py
+FFT and PSD computation
+losses.py
+Spectral and spatial losses
+baseline.py
+Classical per-target optimizer
+train.py
+Training/checkpointing
+evaluate.py
+Metrics and ablations
+visualize.py
+PSD, point sets, energy/force plots
+18. Initial Hyperparameters
+ΓÇó Domain: [0,1]┬▓.
+ΓÇó N=256 initially.
+ΓÇó ╬│ range: [ΓêÆ2,+2].
+ΓÇó 50ΓÇô100 dynamics steps.
+ΓÇó Adam optimizer.
+ΓÇó Log-PSD + slope + NND regularity.
+ΓÇó At least three seeds.
+Do not begin with Transformers, diffusion, 3D, or simultaneous anisotropic/spatial conditioning. The first objective is to
+establish a clean, reproducible two-dimensional core result.
+19. Milestones
+ΓÇó M1: Validate differentiable rasterization, FFT and PSD gradients.
+ΓÇó M2: Train one target without instability.
+ΓÇó M3: Demonstrate measurable spectral control for ╬│=+1.
+ΓÇó M4: Demonstrate quantitative unseen-╬│ interpolation.
+ΓÇó M5: Complete classical baseline and quality/cost comparison.
+ΓÇó M6: Scale to NΓëÑ4,096 or the largest justified size using local interactions.
+ΓÇó M7: Demonstrate anisotropic control if the core is successful.
+ΓÇó M8: Demonstrate spatially varying control if results remain strong.
+ΓÇó M9: Demonstrate a graphics/rendering application.
+
+--- PAGE BREAK ---
+20. Risk Management
+ΓÇó Classical method is equally good: emphasize continuous generalization, interaction interpretability, or amortized cost
+only if quantitatively supported.
+ΓÇó Particle collapse: inspect NND statistics; add regularity loss or a minimal stabilizer as an explicit ablation.
+ΓÇó BPTT memory: shorten unrolls, checkpoint, or move to kNN.
+ΓÇó Rasterization artifacts: validate gradients and vary kernel size/resolution.
+ΓÇó Memorization: use random ╬│ training and strict held-out ╬│ tests.
+ΓÇó Uncertain novelty: complete a targeted literature review before final publication claims.
+21. Immediate 14-Day Plan
+ΓÇó Days 1ΓÇô2: Validate differentiable rasterization, FFT and PSD loss.
+ΓÇó Days 3ΓÇô4: Run N=256, ╬│=+1, purely learned pairwise energy, no stabilizer.
+ΓÇó Days 5ΓÇô6: Inspect collapse, PSD convergence, spacing and E/F curves.
+ΓÇó Days 7ΓÇô8: Train continuous/random ╬│ and evaluate unseen ╬│.
+ΓÇó Days 9ΓÇô10: Implement the classical per-target optimizer.
+ΓÇó Days 11ΓÇô14: Compare neural/classical quality and cost; decide whether to proceed to kNN.
+Decision gate: do not add anisotropy or spatial variation until unseen-╬│ generalization and the classical baseline are
+convincingly demonstrated.
+22. Recommended Paper Narrative
+ΓÇó Different target spectra imply different desired spatial interaction behavior.
+ΓÇó A conditional neural energy can represent this behavior as a continuous interaction family.
+ΓÇó Unseen target spectra can be generated without training a separate model for each target.
+ΓÇó Energy/force plots reveal how the learned interaction law changes with spectral condition.
+ΓÇó Spatial statistics verify that spectral matching does not hide pathological clustering.
+ΓÇó A classical baseline establishes whether amortized learning is practically useful.
+ΓÇó Local interactions establish scalability.
+ΓÇó Anisotropic and spatially varying spectra provide progressive extensions.
+23. Refined Research Claim
+This work proposes learning a continuous family of particle interaction laws conditioned on a desired spatial spectrum. The
+objective is not merely to generate a few predefined spectral point sets, but to learn an interaction field that generalizes to
+unseen and intermediate targets, exhibits interpretable changes in energy and force with the spectral condition, preserves
+measurable spatial regularity, and amortizes the cost of generating new distributions. The method will be evaluated against
+direct classical per-target optimization and progressively extended to scalable local interactions, anisotropic spectra, and
+spatially varying spectral control.
+24. Final Success Criterion
+The project becomes a strong research contribution only if three results are simultaneously demonstrated: (1)
+quantitative unseen-spectrum generalization, (2) meaningful interpretation of the learned interaction law, and (3) a
+defensible quality/efficiency advantage or other clear benefit over classical per-target optimization. The current working
+prototype should therefore be retained as the foundation, while these experiments provide the refinement that turns it into a
+research study.
+
+--- PAGE BREAK ---

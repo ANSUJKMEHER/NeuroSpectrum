@@ -1,0 +1,34 @@
+{
+  "total_runs_recorded": 1,
+  "total_transitions": 8568,
+  "last_run": {
+    "run_id": "run_1790102604072",
+    "timestamp": 1790102604.072926,
+    "target_gamma": 1.0,
+    "initial_distribution": "random",
+    "n_particles": 256,
+    "num_recorded_steps": 126,
+    "initial_energy": 49.78812026977539,
+    "final_energy": 45.64223861694336,
+    "energy_dissipation": 4.145881652832031,
+    "measured_gamma_hat": 1.7208513150993299,
+    "absolute_error": 0.7208513150993299,
+    "target_reached": false
+  },
+  "recent_runs": [
+    {
+      "run_id": "run_1790102604072",
+      "timestamp": 1790102604.072926,
+      "target_gamma": 1.0,
+      "initial_distribution": "random",
+      "n_particles": 256,
+      "num_recorded_steps": 126,
+      "initial_energy": 49.78812026977539,
+      "final_energy": 45.64223861694336,
+      "energy_dissipation": 4.145881652832031,
+      "measured_gamma_hat": 1.7208513150993299,
+      "absolute_error": 0.7208513150993299,
+      "target_reached": false
+    }
+  ]
+}

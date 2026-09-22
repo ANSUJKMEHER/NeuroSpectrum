@@ -1,0 +1,26 @@
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# IDE & OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.agents/
+
+# Scratch & Temporary Archives
+scratch/
+*.zip
+*.log
