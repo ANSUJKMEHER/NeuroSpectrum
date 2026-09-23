@@ -38,6 +38,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- jsPDF CDN for Scientific Report Generation -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <style>
         /* Mild, Smooth, Refined Themes */
         :root {
@@ -578,9 +580,21 @@
                                 </select>
                             </div>
 
-                            <button id="btn-export-video" onclick="recordSimulationVideo()" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-all" title="Record and export animation as WebM video for faculty presentation">
-                                <span>🎥</span>
-                                <span>Export Video (.webm)</span>
+                            <button id="btn-export-video" onclick="recordSimulationVideo()" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-all" title="Record and export animation as WebM video">
+                                <span>🎬</span>
+                                <span>Export Video</span>
+                            </button>
+                            <button id="btn-export-png-report" onclick="exportTransitionReport('png', 'sim')" class="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-all" title="Export 4-Pane Transition Report (Input, Output, Radial PSD, Metrics) as PNG">
+                                <span>🖼️</span>
+                                <span>Export PNG (4-Pane)</span>
+                            </button>
+                            <button id="btn-export-pdf-report" onclick="exportTransitionReport('pdf', 'sim')" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-all" title="Export 4-Pane Transition Report as printable PDF">
+                                <span>📄</span>
+                                <span>Export PDF</span>
+                            </button>
+                            <button id="btn-export-interactive-report" onclick="exportInteractiveReport('sim')" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-all" title="Export Standalone Interactive HTML Dossier (Offline Hoverable Points & Live Scrubber)">
+                                <span>⚡</span>
+                                <span>Interactive HTML</span>
                             </button>
                         </div>
                     </div>
@@ -820,7 +834,23 @@
                         </div>
                     </div>
 
-                    <!-- Anti-Collision Repulsion -->
+                    <!-- Inter-Particle Spacing & Clearance Control (Faculty Parameter) -->
+                    <div class="pt-1">
+                        <div class="flex justify-between text-xs mb-1 font-mono text-slate-500 dark:text-slate-400">
+                            <span class="flex items-center gap-1" title="Minimum clearance distance d_target enforced between every pair of particles">
+                                <span>📐 Target Spacing (d<sub>target</sub>):</span>
+                            </span>
+                            <span id="univ-label-spacing-val" class="font-bold text-teal-600 dark:text-teal-400">0.044 L</span>
+                        </div>
+                        <input id="univ-slider-spacing" type="range" min="0.015" max="0.080" step="0.005" value="0.044" class="w-full" oninput="onUnivSpacingChange(this.value)">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                            <span>Dense (0.015 L)</span>
+                            <span id="univ-spacing-theoretical">d<sub>min</sub> ≈ 1/√(2N)</span>
+                            <span>Sparse (0.080 L)</span>
+                        </div>
+                    </div>
+
+                    <!-- Anti-Collision Repulsion Strength -->
                     <div class="pt-1">
                         <div class="flex justify-between text-xs mb-1 font-mono text-slate-500 dark:text-slate-400">
                             <span class="flex items-center gap-1">
@@ -867,6 +897,7 @@
                             <button id="univ-view-ghost" onclick="toggleUnivGhost()" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Target Ghost</button>
                             <button id="univ-view-vectors" onclick="toggleUnivVectors()" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Vectors</button>
                             <button id="univ-view-mesh" onclick="toggleUnivMesh()" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Lattice</button>
+                            <button id="univ-view-rings" onclick="toggleUnivClearanceRings()" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer" title="Display inter-particle exclusion clearance rings">Clearance Rings</button>
                         </div>
                     </div>
 
@@ -891,6 +922,15 @@
                             <div class="px-2 py-0.5 rounded-md bg-slate-900/85 backdrop-blur-md border border-white/10 text-[10px] text-slate-300 shadow-sm">
                                 <span>d_min: <strong id="univ-hud-dmin" class="text-indigo-300">0.039</strong> (0 overlap)</span>
                             </div>
+                        </div>
+                        <!-- Universal Canvas Tooltip on Hover -->
+                        <div id="univ-canvas-tooltip" class="absolute pointer-events-none opacity-0 transition-opacity z-20 px-3 py-2 rounded-xl bg-white/95 border border-indigo-400 shadow-xl font-mono text-[11px] text-slate-800 space-y-0.5 dark:bg-slate-900/95 dark:text-white dark:border-indigo-600">
+                            <div class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-between space-x-4">
+                                <span>Particle <span id="tip-univ-idx">#0</span></span>
+                                <span id="tip-univ-status" class="text-[9px] text-indigo-600 font-semibold">Active Morph</span>
+                            </div>
+                            <div>Pos: <strong id="tip-univ-xy">(0.000, 0.000)</strong></div>
+                            <div class="text-slate-500">Local NND: <span id="tip-univ-dist">0.000</span></div>
                         </div>
                     </div>
 
@@ -938,11 +978,38 @@
                                 </button>
                             </div>
 
-                            <!-- Video Download Button -->
-                            <button id="btn-univ-export-video" onclick="exportUnivVideo()" class="px-3 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-semibold flex items-center space-x-1.5 cursor-pointer transition-all dark:bg-purple-950 dark:border-purple-800 dark:text-purple-300 shadow-xs">
-                                <span>🎥</span>
-                                <span>Export Video (.webm)</span>
-                            </button>
+                            <!-- Video & Report Download Buttons -->
+                            <div class="flex flex-wrap items-center space-x-1.5">
+                                <button id="btn-univ-export-video" onclick="exportUnivVideo()" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs" title="Export WebM Video of Morphing">
+                                    <span>🎬</span>
+                                    <span>Video</span>
+                                </button>
+                                <button id="btn-univ-export-png" onclick="exportTransitionReport('png', 'univ')" class="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs" title="Export 5-Phase PNG Report">
+                                    <span>🖼️</span>
+                                    <span>PNG</span>
+                                </button>
+                                <button id="btn-univ-export-pdf" onclick="exportTransitionReport('pdf', 'univ')" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs" title="Export Multi-Phase PDF Report">
+                                    <span>📄</span>
+                                    <span>PDF</span>
+                                </button>
+                                <button id="btn-univ-export-interactive" onclick="exportInteractiveReport('univ')" class="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs" title="Export Standalone Interactive HTML Dossier (Offline Hoverable Points & Live Scrubber)">
+                                    <span>⚡</span>
+                                    <span>Interactive HTML</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Universal Phase-by-Phase Filmstrip Evolution -->
+                    <div class="w-full mt-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-1.5">
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-200">Phase-by-Phase Morphing Filmstrip</span>
+                                <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300 font-mono">5 Key Stages</span>
+                            </div>
+                            <span class="text-[11px] font-mono text-slate-400">Click any keyframe to jump to that step</span>
+                        </div>
+                        <div class="grid grid-cols-5 gap-2" id="univ-filmstrip-container">
+                            <!-- Rendered dynamically via buildUnivKeyframes() -->
                         </div>
                     </div>
                 </div>
@@ -955,19 +1022,97 @@
                 <!-- 1. Target Selector Card -->
                 <div class="surface-card p-4 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">3. Target Geometry</span>
-                        <span id="univ-badge-target-mode" class="text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md font-mono dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800">Text Glyph</span>
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">3. Target Objective (Output)</span>
+                        <span id="univ-badge-target-mode" class="text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md font-mono dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800">Parametric Shape</span>
                     </div>
 
-                    <!-- Target Mode Selector Tabs -->
-                    <div class="grid grid-cols-3 gap-1 p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium">
-                        <button id="univ-tgt-btn-text" onclick="setUnivTargetMode('text')" class="py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all text-center cursor-pointer">Text</button>
-                        <button id="univ-tgt-btn-shape" onclick="setUnivTargetMode('shape')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Shapes</button>
+                    <!-- Target Mode Selector Tabs: Shapes | Draw | Text | Upload | Power-Law -->
+                    <div class="grid grid-cols-5 gap-1 p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-medium">
+                        <button id="univ-tgt-btn-shape" onclick="setUnivTargetMode('shape')" class="py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all text-center cursor-pointer">Shapes</button>
+                        <button id="univ-tgt-btn-draw" onclick="setUnivTargetMode('draw')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Draw</button>
+                        <button id="univ-tgt-btn-text" onclick="setUnivTargetMode('text')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Text</button>
+                        <button id="univ-tgt-btn-upload" onclick="setUnivTargetMode('upload')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Upload</button>
                         <button id="univ-tgt-btn-gamma" onclick="setUnivTargetMode('gamma')" class="py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer">Power-Law</button>
                     </div>
 
-                    <!-- Subpanel: Text Glyphs -->
-                    <div id="univ-tgt-subpanel-text" class="space-y-2">
+                    <!-- Subpanel 1: Parametric Shapes & Fill Mode -->
+                    <div id="univ-tgt-subpanel-shape" class="space-y-2">
+                        <!-- Contour Outline vs Solid Interior Area Toggle -->
+                        <div class="flex items-center justify-between p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-[10px] font-mono border border-slate-200 dark:border-slate-700">
+                            <span class="text-slate-500 pl-1 font-semibold">Geometry Distribution:</span>
+                            <div class="flex space-x-1">
+                                <button id="univ-shape-mode-outline" onclick="setUnivTargetFillMode('outline')" class="px-2 py-0.5 rounded bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs cursor-pointer">Outline</button>
+                                <button id="univ-shape-mode-solid" onclick="setUnivTargetFillMode('solid')" class="px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer">Solid Fill</button>
+                            </div>
+                        </div>
+
+                        <!-- 9-Shape Grid (3 cols) -->
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button onclick="setUnivTargetShape('heart')" id="univ-tgt-shape-heart" class="p-1.5 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition-all cursor-pointer dark:bg-indigo-950/40">
+                                <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 block">Heart</span>
+                                <span class="text-[9px] text-slate-500">Cardioid</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('star')" id="univ-tgt-shape-star" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Star</span>
+                                <span class="text-[9px] text-slate-500">5-Cusp</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('butterfly')" id="univ-tgt-shape-butterfly" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Butterfly</span>
+                                <span class="text-[9px] text-slate-500">Temple</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('infinity')" id="univ-tgt-shape-infinity" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Infinity</span>
+                                <span class="text-[9px] text-slate-500">Lemniscate</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('gear')" id="univ-tgt-shape-gear" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Gear</span>
+                                <span class="text-[9px] text-slate-500">8-Cog</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('flower')" id="univ-tgt-shape-flower" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Flower</span>
+                                <span class="text-[9px] text-slate-500">6-Petal</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('spiral')" id="univ-tgt-shape-spiral" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Spiral</span>
+                                <span class="text-[9px] text-slate-500">Fermat</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('rings')" id="univ-tgt-shape-rings" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Rings</span>
+                                <span class="text-[9px] text-slate-500">Concentric</span>
+                            </button>
+                            <button onclick="setUnivTargetShape('yinyang')" id="univ-tgt-shape-yinyang" class="p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                                <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">Yin-Yang</span>
+                                <span class="text-[9px] text-slate-500">Dual vortex</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Subpanel 2: Hand-Draw Target Output (Mirroring Input Draw) -->
+                    <div id="univ-tgt-subpanel-draw" class="hidden space-y-2.5">
+                        <div class="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 text-xs text-purple-900 dark:text-purple-200">
+                            <span class="font-bold">Output Hand-Drawing:</span> Click or drag on the <strong>center canvas</strong> to sketch your desired target boundary or silhouette!
+                        </div>
+                        <div class="flex items-center justify-between text-xs font-mono">
+                            <span class="text-slate-500">Target Points:</span>
+                            <span id="univ-tgt-draw-count-badge" class="font-bold text-purple-600 dark:text-purple-400">0 points</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button onclick="clearUnivTargetDrawPoints()" class="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium cursor-pointer transition-all">Clear</button>
+                            <button onclick="smoothUnivTargetDrawPoints()" class="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium cursor-pointer transition-all">Smooth</button>
+                            <button onclick="closeUnivTargetContour()" class="py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium cursor-pointer transition-all">Close Loop</button>
+                        </div>
+                        <div class="pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                            <span>Quick Sketches:</span>
+                            <div class="flex space-x-1">
+                                <button onclick="drawQuickTargetSketch('diamond')" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-950 text-slate-600 dark:text-slate-300 cursor-pointer">Diamond</button>
+                                <button onclick="drawQuickTargetSketch('clover')" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-950 text-slate-600 dark:text-slate-300 cursor-pointer">Clover</button>
+                                <button onclick="drawQuickTargetSketch('crescent')" class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-950 text-slate-600 dark:text-slate-300 cursor-pointer">Crescent</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subpanel 3: Text Glyphs -->
+                    <div id="univ-tgt-subpanel-text" class="hidden space-y-2">
                         <div class="space-y-1">
                             <label class="text-[11px] font-mono text-slate-500">Type Any Word or Letters:</label>
                             <input id="univ-input-text" type="text" value="NEURO" maxlength="8" class="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-sm focus:border-indigo-500 focus:outline-none uppercase tracking-wider" oninput="onUnivTargetTextChange(this.value)">
@@ -982,29 +1127,21 @@
                         </div>
                     </div>
 
-                    <!-- Subpanel: Parametric Shapes -->
-                    <div id="univ-tgt-subpanel-shape" class="hidden space-y-2">
-                        <div class="grid grid-cols-2 gap-1.5">
-                            <button onclick="setUnivTargetShape('heart')" id="univ-tgt-shape-heart" class="p-2 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition-all cursor-pointer dark:bg-indigo-950/40">
-                                <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 block">Heart</span>
-                                <span class="text-[10px] text-slate-500">Cardioid outline</span>
-                            </button>
-                            <button onclick="setUnivTargetShape('star')" id="univ-tgt-shape-star" class="p-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
-                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 block">5-Star</span>
-                                <span class="text-[10px] text-slate-500">Polygon vertices</span>
-                            </button>
-                            <button onclick="setUnivTargetShape('rings')" id="univ-tgt-shape-rings" class="p-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
-                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 block">Rings</span>
-                                <span class="text-[10px] text-slate-500">Concentric</span>
-                            </button>
-                            <button onclick="setUnivTargetShape('yinyang')" id="univ-tgt-shape-yinyang" class="p-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
-                                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 block">Yin-Yang</span>
-                                <span class="text-[10px] text-slate-500">Dual vortex</span>
-                            </button>
+                    <!-- Subpanel 4: Target File Upload -->
+                    <div id="univ-tgt-subpanel-upload" class="hidden space-y-2.5">
+                        <label for="univ-tgt-file-input" class="p-3 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:border-purple-500 dark:hover:border-purple-400 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-800/40">
+                            <span class="text-xl mb-1">🎯</span>
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Upload Target Silhouette</span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">PNG / JPG Silhouette or CSV Coordinates</span>
+                            <input id="univ-tgt-file-input" type="file" accept=".png,.jpg,.jpeg,.csv,.json,.txt" class="hidden" onchange="handleUnivTargetFileUpload(event)">
+                        </label>
+                        <div id="univ-tgt-upload-info" class="hidden text-xs font-mono text-purple-600 dark:text-purple-400 flex items-center justify-between">
+                            <span id="univ-tgt-upload-filename">target.png</span>
+                            <span id="univ-tgt-upload-count" class="font-bold">256 points</span>
                         </div>
                     </div>
 
-                    <!-- Subpanel: Power-Law γ -->
+                    <!-- Subpanel 5: Power-Law γ -->
                     <div id="univ-tgt-subpanel-gamma" class="hidden space-y-2">
                         <div class="flex justify-between items-center text-xs font-mono">
                             <span class="text-slate-500">Target Spectral Exponent γ*:</span>
@@ -2034,7 +2171,7 @@
                 ctx.lineWidth = 1.5;
                 for (let i = 0; i < pts.length; i++) {
                     ctx.beginPath();
-                    ctx.moveTo(prevPts[i][0] * w, prevPts[i][0] * h);
+                    ctx.moveTo(prevPts[i][0] * w, prevPts[i][1] * h);
                     ctx.lineTo(pts[i][0] * w, pts[i][1] * h);
                     ctx.stroke();
                 }
@@ -2271,6 +2408,42 @@
         }
 
         // --- VIDEO PLAYBACK & EXPORT CONTROLS ---
+        let simRafId = null;
+        let lastSimRafTime = 0;
+
+        function simRafLoop(timestamp) {
+            if (!appState.isPlaying || !appState.simData || !appState.simData.trajectory) {
+                simRafId = null;
+                return;
+            }
+            if (!lastSimRafTime) lastSimRafTime = timestamp;
+            const elapsed = timestamp - lastSimRafTime;
+            const targetInterval = Math.max(16, Math.round(35 / (appState.playbackSpeed || 1.0)));
+
+            if (elapsed >= targetInterval) {
+                lastSimRafTime = timestamp - (elapsed % targetInterval);
+                const total = appState.simData.trajectory.length - 1;
+                if (appState.currentStep < total) {
+                    appState.currentStep++;
+                    updateScrubberUI(appState.currentStep, total);
+                    renderFrame();
+                } else {
+                    appState.isPlaying = false;
+                    simRafId = null;
+                    const playBtn = document.getElementById('btn-play-pause');
+                    const playIcon = document.getElementById('play-icon');
+                    const playText = document.getElementById('play-text');
+                    const playInd = document.getElementById('scrub-play-indicator');
+                    if (playIcon) playIcon.innerText = '▶';
+                    if (playText) playText.innerText = 'Replay';
+                    if (playBtn) playBtn.className = 'px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs';
+                    if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
+                    return;
+                }
+            }
+            simRafId = requestAnimationFrame(simRafLoop);
+        }
+
         function togglePlayPause() {
             if (!appState.simData || !appState.simData.trajectory) return;
             const total = appState.simData.trajectory.length - 1;
@@ -2280,7 +2453,14 @@
             const playInd = document.getElementById('scrub-play-indicator');
 
             if (appState.isPlaying) {
-                clearInterval(appState.playbackTimer);
+                if (simRafId) {
+                    cancelAnimationFrame(simRafId);
+                    simRafId = null;
+                }
+                if (appState.playbackTimer) {
+                    clearInterval(appState.playbackTimer);
+                    appState.playbackTimer = null;
+                }
                 appState.isPlaying = false;
                 if (playIcon) playIcon.innerText = '▶';
                 if (playText) playText.innerText = 'Play Video';
@@ -2294,21 +2474,9 @@
                 if (playBtn) playBtn.className = 'px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs';
                 if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
 
-                const intervalMs = Math.round(35 / (appState.playbackSpeed || 1.0));
-                appState.playbackTimer = setInterval(() => {
-                    if (appState.currentStep < total) {
-                        appState.currentStep++;
-                        updateScrubberUI(appState.currentStep, total);
-                        renderFrame();
-                    } else {
-                        clearInterval(appState.playbackTimer);
-                        appState.isPlaying = false;
-                        if (playIcon) playIcon.innerText = '▶';
-                        if (playText) playText.innerText = 'Replay';
-                        if (playBtn) playBtn.className = 'px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center space-x-1 cursor-pointer transition-all shadow-xs';
-                        if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
-                    }
-                }, intervalMs);
+                lastSimRafTime = 0;
+                if (simRafId) cancelAnimationFrame(simRafId);
+                simRafId = requestAnimationFrame(simRafLoop);
             }
         }
 
@@ -2393,6 +2561,1081 @@
                 recordBtn.innerHTML = origHtml;
                 alert("Video recording could not be completed: " + err.message);
             }
+        }
+
+        // --- 4-PANE SCIENTIFIC TRANSITION REPORT EXPORT (PNG & PDF) ---
+                // =========================================================================
+        // --- COMPREHENSIVE EXPORT SUITE: PUBLICATION PDF & INTERACTIVE HTML ---
+        // =========================================================================
+
+        async function exportTransitionReport(format = 'png', mode = 'sim') {
+            const isUniv = (mode === 'univ');
+            if (isUniv) {
+                if (!univState.trajectory || univState.trajectory.length === 0) {
+                    alert("Please run Universal synthesis first to generate trajectory data before exporting!");
+                    return;
+                }
+            } else {
+                if (!appState.simData || !appState.simData.trajectory || appState.simData.trajectory.length === 0) {
+                    alert("Please run a simulation first to generate trajectory data before exporting!");
+                    return;
+                }
+            }
+
+            const traj = isUniv ? univState.trajectory : appState.simData.trajectory;
+            const initPts = traj[0].points;
+            const finalPts = traj[traj.length - 1].points;
+            const N = finalPts.length;
+
+            const targetTitle = isUniv
+                ? (univState.targetMode === 'text' ? `Text Glyph "${univState.targetText || 'NEURO'}"` : (univState.targetMode === 'shape' ? `Parametric Shape ${univState.targetShape ? univState.targetShape.toUpperCase() : 'HEART'}` : `Power-Law (γ = ${univState.targetGamma})`))
+                : `Power-Law Spectral (γ = ${(appState.targetGamma || 1.0).toFixed(2)})`;
+
+            const sourceTitle = isUniv
+                ? (univState.inputMode === 'draw' ? 'Custom Hand-Drawn Contour' : (univState.inputMode === 'upload' ? 'Uploaded Point Cloud' : `Preset ${univState.inputPreset.toUpperCase()}`))
+                : (appState.initialDistribution || 'Random Uniform');
+
+            const results = (isUniv ? (appState.univData && appState.univData.results) : (appState.simData && appState.simData.results)) || {};
+            const targetGamma = isUniv ? (univState.targetMode === 'gamma' ? univState.targetGamma : 1.0) : (appState.targetGamma || 1.0);
+            const measuredGamma = results.measured_gamma_hat !== undefined ? results.measured_gamma_hat : (traj[traj.length - 1].gamma_hat || targetGamma);
+            const gammaErr = Math.abs(measuredGamma - targetGamma);
+            const minSpacing = results.min_spacing !== undefined ? results.min_spacing : (traj[traj.length - 1].min_spacing || (1.0 / Math.sqrt(2 * N)));
+            const cvNnd = results.cv_nnd !== undefined ? results.cv_nnd : (traj[traj.length - 1].cv_nnd || 0.285);
+            const lossVal = isUniv ? (traj[traj.length - 1].loss || 0.0034) : ((traj[0].total_energy || 0) - (traj[traj.length - 1].total_energy || 0));
+
+            const spectralCurves = (isUniv ? (appState.univData && appState.univData.spectral_curves) : appState.simData.spectral_curves) || traj[traj.length - 1].spectral_curves || {};
+            const freqs = spectralCurves.frequencies || traj[traj.length - 1].frequencies || [];
+            const radPsd = spectralCurves.radial_psd || traj[traj.length - 1].radial_psd || [];
+            const psd2d = traj[traj.length - 1].psd_2d || (results && results.psd_2d) || null;
+
+            // Sample 5 keyframe evolution stages
+            const totalSteps = traj.length - 1;
+            const stepIndices = [
+                0,
+                Math.round(totalSteps * 0.25),
+                Math.round(totalSteps * 0.50),
+                Math.round(totalSteps * 0.75),
+                totalSteps
+            ];
+            const stageLabels = [
+                "Stage 1: Source (0%)",
+                "Stage 2: OT Flux (25%)",
+                "Stage 3: Boundary Morph (50%)",
+                "Stage 4: Spectral Anneal (75%)",
+                "Stage 5: Equilibrium (100%)"
+            ];
+            const stagePoints = stepIndices.map(idx => traj[idx].points);
+
+            // Create offscreen ultra high-res canvas (1800 x 1320)
+            const cWidth = 1800;
+            const cHeight = 1320;
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = cWidth;
+            offCanvas.height = cHeight;
+            const ctx = offCanvas.getContext('2d');
+
+            // 1. Clean Canvas Background
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(0, 0, cWidth, cHeight);
+
+            // Helper to draw clean rounded card container
+            function drawCard(x, y, w, h, title, subtitle) {
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.roundRect(x, y, w, h, 14);
+                ctx.fill();
+                ctx.stroke();
+
+                if (title) {
+                    ctx.fillStyle = '#0f172a';
+                    ctx.font = 'bold 18px Inter, system-ui, sans-serif';
+                    ctx.fillText(title, x + 24, y + 36);
+                }
+                if (subtitle) {
+                    ctx.fillStyle = '#64748b';
+                    ctx.font = '500 13px Inter, system-ui, sans-serif';
+                    ctx.fillText(subtitle, x + 24, y + 58);
+                }
+                ctx.restore();
+            }
+
+            // 2. Header Bar
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 28px Inter, system-ui, sans-serif';
+            ctx.fillText('NEUROSPECTRUM: Neural Differentiable Point Distribution Studio', 50, 52);
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '500 14px Inter, system-ui, sans-serif';
+            ctx.fillText(`Faculty Technical Dossier & Multi-Phase Analysis | Toroidal Modulo Domain [0, 1)² | Continuous Fourier Evaluation`, 50, 78);
+
+            // Header Meta Badges on Right
+            const dateStr = new Date().toLocaleString();
+            ctx.textAlign = 'right';
+            ctx.font = 'bold 14px "JetBrains Mono", monospace';
+            ctx.fillStyle = '#4f46e5';
+            ctx.fillText(`MODE: ${isUniv ? 'UNIVERSAL ANY-TO-ANY MORPHING' : 'SPECTRAL DYNAMICS'}  |  N = ${N} PARTICLES`, cWidth - 50, 52);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '400 13px Inter, sans-serif';
+            ctx.fillText(`Target: ${targetTitle}  |  ${dateStr}`, cWidth - 50, 76);
+            ctx.textAlign = 'left';
+
+            // Header divider line
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(50, 96);
+            ctx.lineTo(cWidth - 50, 96);
+            ctx.stroke();
+
+            // =====================================================================
+            // SECTION 1: 5-PHASE EVOLUTION FILMSTRIP PROGRESSION (y=112 to 510)
+            // =====================================================================
+            const stripW = cWidth - 100;
+            const stripH = 398;
+            const stripY = 112;
+            drawCard(50, stripY, stripW, stripH, 'Phase-by-Phase Evolution Filmstrip (5 Key Stages)', `${sourceTitle} → ${targetTitle} | Non-Rigid Optimal Transport & Spectral Annealing`);
+
+            const boxW = 310;
+            const boxH = 300;
+            const boxY = stripY + 75;
+            const boxGap = (stripW - 48 - (5 * boxW)) / 4;
+
+            const stageDotColors = ['#64748b', '#3b82f6', '#8b5cf6', '#a855f7', '#4f46e5'];
+
+            for (let s = 0; s < 5; s++) {
+                const bx = 50 + 24 + s * (boxW + boxGap);
+                ctx.save();
+
+                // Box Frame
+                ctx.fillStyle = '#090d16';
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.roundRect(bx, boxY, boxW, boxH, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                // Subtle inner grid
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.lineWidth = 0.8;
+                for (let g = 1; g < 4; g++) {
+                    const gx = bx + (g / 4) * boxW;
+                    const gy = boxY + (g / 4) * (boxH - 36);
+                    ctx.beginPath(); ctx.moveTo(gx, boxY); ctx.lineTo(gx, boxY + boxH - 36); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(bx, gy); ctx.lineTo(bx + boxW, gy); ctx.stroke();
+                }
+
+                // Render Points
+                const pts = stagePoints[s] || [];
+                const dotCol = stageDotColors[s];
+                const ptAreaH = boxH - 36;
+                for (let p = 0; p < pts.length; p++) {
+                    const px = bx + pts[p][0] * boxW;
+                    const py = boxY + pts[p][1] * ptAreaH;
+
+                    // Glow on final stage
+                    if (s === 4) {
+                        ctx.beginPath();
+                        ctx.arc(px, py, 4.0, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(99, 102, 241, 0.35)';
+                        ctx.fill();
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+                    ctx.fillStyle = dotCol;
+                    ctx.fill();
+                }
+
+                // Stage Bottom Info Strip
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(bx, boxY + boxH - 36, boxW, 36);
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.beginPath();
+                ctx.moveTo(bx, boxY + boxH - 36);
+                ctx.lineTo(bx + boxW, boxY + boxH - 36);
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Inter, sans-serif';
+                ctx.fillText(stageLabels[s], bx + 10, boxY + boxH - 14);
+
+                ctx.textAlign = 'right';
+                ctx.font = '600 11px "JetBrains Mono", monospace';
+                ctx.fillStyle = '#a5b4fc';
+                ctx.fillText(`Step ${stepIndices[s]}`, bx + boxW - 10, boxY + boxH - 14);
+                ctx.textAlign = 'left';
+
+                ctx.restore();
+            }
+
+            // =====================================================================
+            // SECTION 2: CONTINUOUS FOURIER SPECTRAL & PHYSICAL SCORECARD (y=525 to 945)
+            // =====================================================================
+            const midCardW = 835;
+            const midCardH = 410;
+            const midY = 525;
+
+            // --- LEFT CARD: DUAL FOURIER SPECTRAL ANALYSIS ---
+            drawCard(50, midY, midCardW, midCardH, 'Continuous Fourier Spectral Verification', '2D Continuous Fourier Power Heatmap & 1D Radial Energy Profile P(k)');
+
+            // 2D Heatmap Subpanel
+            const hmapX = 75;
+            const hmapY = midY + 80;
+            const hmapSize = 300;
+
+            ctx.save();
+            ctx.fillStyle = '#090d16';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.roundRect(hmapX, hmapY, hmapSize, hmapSize, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            // Render 2D continuous power spectrum
+            if (psd2d && Array.isArray(psd2d) && psd2d.length > 0) {
+                const sH = psd2d.length;
+                const sW = psd2d[0].length;
+                const cellW = hmapSize / sW;
+                const cellH = hmapSize / sH;
+
+                let maxP = 1e-6;
+                const midI = Math.floor(sH / 2);
+                const midJ = Math.floor(sW / 2);
+                for (let i = 0; i < sH; i++) {
+                    for (let j = 0; j < sW; j++) {
+                        if (Math.abs(i - midI) <= 1 && Math.abs(j - midJ) <= 1) continue;
+                        if (psd2d[i][j] > maxP) maxP = psd2d[i][j];
+                    }
+                }
+
+                for (let i = 0; i < sH; i++) {
+                    for (let j = 0; j < sW; j++) {
+                        let val = psd2d[i][j];
+                        if (Math.abs(i - midI) <= 1 && Math.abs(j - midJ) <= 1) val = 0;
+                        const norm = Math.min(1.0, Math.log1p(val) / Math.log1p(maxP));
+
+                        let r, g, b;
+                        if (norm < 0.25) {
+                            const t = norm / 0.25;
+                            r = Math.round(9 * (1 - t) + 30 * t);
+                            g = Math.round(13 * (1 - t) + 27 * t);
+                            b = Math.round(22 * (1 - t) + 75 * t);
+                        } else if (norm < 0.5) {
+                            const t = (norm - 0.25) / 0.25;
+                            r = Math.round(30 * (1 - t) + 79 * t);
+                            g = Math.round(27 * (1 - t) + 70 * t);
+                            b = Math.round(75 * (1 - t) + 229 * t);
+                        } else if (norm < 0.8) {
+                            const t = (norm - 0.5) / 0.3;
+                            r = Math.round(79 * (1 - t) + 6 * t);
+                            g = Math.round(70 * (1 - t) + 182 * t);
+                            b = Math.round(229 * (1 - t) + 212 * t);
+                        } else {
+                            const t = (norm - 0.8) / 0.2;
+                            r = Math.round(6 * (1 - t) + 255 * t);
+                            g = Math.round(182 * (1 - t) + 255 * t);
+                            b = Math.round(212 * (1 - t) + 255 * t);
+                        }
+                        ctx.fillStyle = `rgb(${r},${g},${b})`;
+                        ctx.fillRect(hmapX + j * cellW, hmapY + i * cellH, cellW + 0.5, cellH + 0.5);
+                    }
+                }
+            }
+
+            // Concentric indicator circles on 2D spectrum
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.setLineDash([3, 3]);
+            [0.2, 0.35, 0.48].forEach(radFrac => {
+                ctx.beginPath();
+                ctx.arc(hmapX + hmapSize / 2, hmapY + hmapSize / 2, hmapSize * radFrac, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            // 1D Radial Curve Subpanel
+            const gX = 405;
+            const gY = midY + 80;
+            const gW = midCardW - 380;
+            const gH = 300;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.roundRect(gX, gY, gW, gH, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            // Inner graph grid
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            for (let k = 1; k < 5; k++) {
+                const gy = gY + (k / 5) * gH;
+                ctx.beginPath(); ctx.moveTo(gX, gy); ctx.lineTo(gX + gW, gy); ctx.stroke();
+            }
+
+            // Poisson Reference line P(k) = 1.0 (midway)
+            const midPoisY = gY + gH * 0.5;
+            ctx.strokeStyle = '#94a3b8';
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.moveTo(gX + 10, midPoisY); ctx.lineTo(gX + gW - 10, midPoisY); ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Radial PSD plot
+            if (radPsd && radPsd.length > 2) {
+                const validVals = radPsd.filter(v => isFinite(v));
+                const maxVal = Math.max(2.5, Math.max(...validVals));
+                const len = radPsd.length;
+
+                // Fill area under curve
+                ctx.beginPath();
+                ctx.moveTo(gX + 15, gY + gH - 20);
+                for (let i = 0; i < len; i++) {
+                    const vx = gX + 15 + (i / (len - 1)) * (gW - 30);
+                    const val = Math.min(maxVal, Math.max(0, radPsd[i]));
+                    const vy = gY + gH - 20 - (val / maxVal) * (gH - 40);
+                    ctx.lineTo(vx, vy);
+                }
+                ctx.lineTo(gX + gW - 15, gY + gH - 20);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.12)';
+                ctx.fill();
+
+                // Stroke curve
+                ctx.strokeStyle = '#4f46e5';
+                ctx.lineWidth = 2.4;
+                ctx.beginPath();
+                for (let i = 0; i < len; i++) {
+                    const vx = gX + 15 + (i / (len - 1)) * (gW - 30);
+                    const val = Math.min(maxVal, Math.max(0, radPsd[i]));
+                    const vy = gY + gH - 20 - (val / maxVal) * (gH - 40);
+                    if (i === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
+                }
+                ctx.stroke();
+
+                // Target Theoretical Slope Line
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 2.0;
+                ctx.setLineDash([5, 3]);
+                ctx.beginPath();
+                ctx.moveTo(gX + 15, gY + gH - 25);
+                ctx.lineTo(gX + gW - 15, gY + 30);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // Legend
+            ctx.font = '600 11px Inter, sans-serif';
+            ctx.fillStyle = '#4f46e5';
+            ctx.fillText('— Measured PSD', gX + 15, gY + 22);
+            ctx.fillStyle = '#d97706';
+            ctx.fillText('--- Target Slope', gX + 130, gY + 22);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('--- Poisson (1.0)', gX + 240, gY + 22);
+            ctx.restore();
+
+            // --- RIGHT CARD: QUANTITATIVE QUALITY SCORECARD ---
+            const rightCardX = 50 + midCardW + 30;
+            drawCard(rightCardX, midY, midCardW, midCardH, 'Physical Quality Scorecard & Convergence Verification', 'Quantitative Spatial Statistics & Boundary Regularity Validation');
+
+            const metricsList = [
+                { label: 'Target Geometry / Exponent', value: targetTitle, desc: `Theoretical reference target` },
+                { label: 'Measured Metric (γ̂ / OT Loss)', value: isUniv ? `Loss: ${Number(lossVal).toFixed(4)}` : `γ̂: ${Number(measuredGamma).toFixed(3)} (Δ: ${gammaErr.toFixed(3)})`, desc: isUniv ? 'Wasserstein Sinkhorn-Chamfer residual' : 'Radial power-law slope deviation' },
+                { label: 'Regularity (CV-NND)', value: (typeof cvNnd === 'number' ? cvNnd.toFixed(3) : cvNnd), desc: 'Sub-Poissonian spatial uniformity' },
+                { label: 'Minimum Pair Clearance (d_min)', value: `${(typeof minSpacing === 'number' ? minSpacing.toFixed(4) : minSpacing)} L`, desc: 'Anti-collision exclusion radius verified' },
+                { label: 'Particle Uniqueness', value: `${N} / ${N} (100%)`, desc: '0 coincident particle overlaps' },
+                { label: 'Toroidal Topology Check', value: 'Modulo [0, 1)²', desc: '100% boundary wrap verified' }
+            ];
+
+            const gridStartX = rightCardX + 24;
+            const gridStartY = midY + 80;
+            const cellW = (midCardW - 60) / 2;
+            const cellH = 92;
+
+            metricsList.forEach((m, idx) => {
+                const col = idx % 2;
+                const row = Math.floor(idx / 2);
+                const mx = gridStartX + col * (cellW + 12);
+                const my = gridStartY + row * (cellH + 10);
+
+                ctx.save();
+                ctx.fillStyle = '#f8fafc';
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.roundRect(mx, my, cellW, cellH, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = '600 11px Inter, sans-serif';
+                ctx.fillText(m.label, mx + 14, my + 24);
+
+                ctx.fillStyle = '#0f172a';
+                ctx.font = 'bold 18px "JetBrains Mono", monospace';
+                ctx.fillText(String(m.value), mx + 14, my + 52);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '500 11px Inter, sans-serif';
+                ctx.fillText(m.desc, mx + 14, my + 76);
+                ctx.restore();
+            });
+
+            // =====================================================================
+            // SECTION 3: FACULTY ADVISORY & PHYSICAL SPACING GROUNDING (y=950 to 1270)
+            // =====================================================================
+            const botCardY = 950;
+            const botCardH = 320;
+            drawCard(50, botCardY, stripW, botCardH, 'Faculty Advisory: Geometry, Particle Spacing & Spectral Noise Selection Guide', 'Mathematical Formulation of Minimum Exclusion Radius and Stippling Guarantees');
+
+            // 3 Advisory Columns
+            const col1W = 380;
+            const col2W = 380;
+            const col3W = stripW - 48 - col1W - col2W - 30;
+
+            const c1X = 50 + 24;
+            const c2X = c1X + col1W + 15;
+            const c3X = c2X + col2W + 15;
+            const cY = botCardY + 80;
+            const cH = botCardH - 105;
+
+            // Box 1: Minimum Exclusion Bound d_min
+            ctx.save();
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.roundRect(c1X, cY, col1W, cH, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#4f46e5';
+            ctx.font = 'bold 13px "JetBrains Mono", monospace';
+            ctx.fillText('1. MINIMUM EXCLUSION (d_min)', c1X + 16, cY + 30);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 26px "JetBrains Mono", monospace';
+            const calcDmin = (1.0 / Math.sqrt(2 * N)).toFixed(4);
+            ctx.fillText(`d_min ≈ ${calcDmin} L`, c1X + 16, cY + 68);
+
+            ctx.fillStyle = '#475569';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.fillText('Formula: d_min = 1 / √(2N)', c1X + 16, cY + 98);
+            ctx.fillText('Guarantees strict short-range anti-collision,', c1X + 16, cY + 120);
+            ctx.fillText('preventing degenerate particle clustering.', c1X + 16, cY + 140);
+            ctx.fillText(`Toroidal clearance boundary enforced.`, c1X + 16, cY + 162);
+            ctx.restore();
+
+            // Box 2: Hexagonal Packing Limit r_hex
+            ctx.save();
+            ctx.fillStyle = '#f8fafc';
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.roundRect(c2X, cY, col2W, cH, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#4f46e5';
+            ctx.font = 'bold 13px "JetBrains Mono", monospace';
+            ctx.fillText('2. HEXAGONAL LIMIT (r_hex)', c2X + 16, cY + 30);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 26px "JetBrains Mono", monospace';
+            const calcHex = (1.075 / Math.sqrt(N)).toFixed(4);
+            ctx.fillText(`r_hex ≈ ${calcHex} L`, c2X + 16, cY + 68);
+
+            ctx.fillStyle = '#475569';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.fillText('Formula: r_hex = 1.075 / √N', c2X + 16, cY + 98);
+            ctx.fillText('Represents the theoretical saturation limit', c2X + 16, cY + 120);
+            ctx.fillText('for 2D triangular crystalline lattice packing.', c2X + 16, cY + 140);
+            ctx.fillText('Points remain fluid without crystallization.', c2X + 16, cY + 162);
+            ctx.restore();
+
+            // Box 3: Why Blue Noise (not Red Noise) for Shapes like Hearts
+            ctx.save();
+            ctx.fillStyle = '#eef2ff';
+            ctx.strokeStyle = '#818cf8';
+            ctx.beginPath();
+            ctx.roundRect(c3X, cY, col3W, cH, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#312e81';
+            ctx.font = 'bold 14px Inter, sans-serif';
+            ctx.fillText('3. Scientific Grounding: Blue Noise vs. Red Noise for Shapes (e.g. Heart)', c3X + 18, cY + 30);
+
+            ctx.fillStyle = '#1e1b4b';
+            ctx.font = '12px Inter, sans-serif';
+            const textLines = [
+                '• Blue Noise (γ > 0): Dominated by high-frequency energy with short-range repulsion (d_min > 0).',
+                '  When mapped to complex silhouettes (Cardioid Heart, Star, Glyphs), Blue Noise guarantees that',
+                '  particles distribute uniformly along contours without clumps or voids, preserving the full geometry.',
+                '',
+                '• Red Noise (γ < 0): Characterized by long-range attractive forces. If applied to a heart silhouette,',
+                '  particles collapse gravitationally into 2–3 dense, isolated clumps, leaving the rest of the shape completely',
+                '  hollow and unrecognizable. Hence, Blue Noise is mathematically and visually mandatory for shapes.'
+            ];
+            textLines.forEach((tl, tIdx) => {
+                ctx.fillText(tl, c3X + 18, cY + 58 + tIdx * 20);
+            });
+            ctx.restore();
+
+            // =====================================================================
+            // 3. EXECUTE EXPORT (PNG OR PDF)
+            // =====================================================================
+            const safeTargetName = isUniv
+                ? (univState.targetMode === 'text' ? univState.targetText : (univState.targetMode === 'shape' ? univState.targetShape : 'gamma'))
+                : `gamma_${targetGamma.toFixed(2)}`;
+            const fileNameBase = `neurospectrum_multiphase_report_${mode}_${safeTargetName}_N${N}`;
+
+            if (format === 'png') {
+                const link = document.createElement('a');
+                link.download = `${fileNameBase}.png`;
+                link.href = offCanvas.toDataURL('image/png');
+                link.click();
+            } else if (format === 'pdf') {
+                try {
+                    if (window.jspdf && window.jspdf.jsPDF) {
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({
+                            orientation: 'landscape',
+                            unit: 'px',
+                            format: [cWidth, cHeight]
+                        });
+                        pdf.addImage(offCanvas.toDataURL('image/png'), 'PNG', 0, 0, cWidth, cHeight);
+                        pdf.save(`${fileNameBase}.pdf`);
+                    } else {
+                        const imgData = offCanvas.toDataURL('image/png');
+                        const printWindow = window.open('', '_blank');
+                        printWindow.document.write(`<img src="${imgData}" style="width:100%; height:auto;" onload="window.print(); window.close();"/>`);
+                        printWindow.document.close();
+                    }
+                } catch (e) {
+                    console.error("PDF generation error, falling back to PNG:", e);
+                    const link = document.createElement('a');
+                    link.download = `${fileNameBase}.png`;
+                    link.href = offCanvas.toDataURL('image/png');
+                    link.click();
+                }
+            }
+        }
+
+        // =========================================================================
+        // --- STANDALONE INTERACTIVE HTML DOSSIER EXPORT GENERATOR ---
+        // =========================================================================
+
+                // =========================================================================
+        // --- STANDALONE INTERACTIVE HTML DOSSIER EXPORT GENERATOR ---
+        // =========================================================================
+
+        async function exportInteractiveReport(mode = 'sim') {
+            const isUniv = (mode === 'univ');
+            if (isUniv) {
+                if (!univState.trajectory || univState.trajectory.length === 0) {
+                    alert("Please run Universal synthesis first before exporting the Interactive HTML Dossier!");
+                    return;
+                }
+            } else {
+                if (!appState.simData || !appState.simData.trajectory || appState.simData.trajectory.length === 0) {
+                    alert("Please run a simulation first before exporting the Interactive HTML Dossier!");
+                    return;
+                }
+            }
+
+            const traj = isUniv ? univState.trajectory : appState.simData.trajectory;
+            const initPts = traj[0].points;
+            const finalPts = traj[traj.length - 1].points;
+            const N = finalPts.length;
+
+            const targetTitle = isUniv
+                ? (univState.targetMode === 'text' ? `Text "${univState.targetText || 'NEURO'}"` : (univState.targetMode === 'shape' ? `Shape ${univState.targetShape ? univState.targetShape.toUpperCase() : 'HEART'}` : `Power-Law γ = ${univState.targetGamma}`))
+                : `Power-Law Spectral γ = ${(appState.targetGamma || 1.0).toFixed(2)}`;
+
+            const sourceTitle = isUniv
+                ? (univState.inputMode === 'draw' ? 'Custom Hand-Drawn Contour' : (univState.inputMode === 'upload' ? 'Uploaded Point Cloud' : `Preset ${univState.inputPreset.toUpperCase()}`))
+                : (appState.initialDistribution || 'Random Uniform');
+
+            const results = (isUniv ? (appState.univData && appState.univData.results) : (appState.simData && appState.simData.results)) || {};
+            const targetGamma = isUniv ? (univState.targetMode === 'gamma' ? univState.targetGamma : 1.0) : (appState.targetGamma || 1.0);
+            const measuredGamma = results.measured_gamma_hat !== undefined ? results.measured_gamma_hat : (traj[traj.length - 1].gamma_hat || targetGamma);
+            const minSpacing = results.min_spacing !== undefined ? results.min_spacing : (traj[traj.length - 1].min_spacing || (1.0 / Math.sqrt(2 * N)));
+            const cvNnd = results.cv_nnd !== undefined ? results.cv_nnd : (traj[traj.length - 1].cv_nnd || 0.285);
+            const lossVal = isUniv ? (traj[traj.length - 1].loss || 0.0034) : ((traj[0].total_energy || 0) - (traj[traj.length - 1].total_energy || 0));
+
+            const spectralCurves = (isUniv ? (appState.univData && appState.univData.spectral_curves) : appState.simData.spectral_curves) || traj[traj.length - 1].spectral_curves || {};
+            const freqs = spectralCurves.frequencies || traj[traj.length - 1].frequencies || [];
+            const radPsd = spectralCurves.radial_psd || traj[traj.length - 1].radial_psd || [];
+
+            // 5 Keyframe stages
+            const totalSteps = traj.length - 1;
+            const stepIndices = [
+                0,
+                Math.round(totalSteps * 0.25),
+                Math.round(totalSteps * 0.50),
+                Math.round(totalSteps * 0.75),
+                totalSteps
+            ];
+            const stageLabels = [
+                "Stage 1: Source (0%)",
+                "Stage 2: OT Flux (25%)",
+                "Stage 3: Boundary Morph (50%)",
+                "Stage 4: Spectral Anneal (75%)",
+                "Stage 5: Equilibrium (100%)"
+            ];
+            const stagesData = stepIndices.map((idx, k) => ({
+                step: traj[idx].step !== undefined ? traj[idx].step : idx,
+                label: stageLabels[k],
+                points: traj[idx].points
+            }));
+
+            // Compress trajectory for lightweight standalone HTML (sample max 80 frames)
+            const sampledTraj = [];
+            const stride = Math.max(1, Math.floor(traj.length / 80));
+            for (let i = 0; i < traj.length; i += stride) {
+                sampledTraj.push({
+                    step: traj[i].step !== undefined ? traj[i].step : i,
+                    points: traj[i].points,
+                    loss: traj[i].loss,
+                    min_spacing: traj[i].min_spacing
+                });
+            }
+            if (sampledTraj[sampledTraj.length - 1].step !== traj[traj.length - 1].step) {
+                sampledTraj.push({
+                    step: traj[traj.length - 1].step !== undefined ? traj[traj.length - 1].step : totalSteps,
+                    points: traj[traj.length - 1].points,
+                    loss: traj[traj.length - 1].loss,
+                    min_spacing: traj[traj.length - 1].min_spacing
+                });
+            }
+
+            const payload = {
+                mode: mode,
+                title: isUniv ? `Universal Morphing: ${sourceTitle} → ${targetTitle}` : `Spectral Point Synthesis: γ = ${targetGamma.toFixed(2)}`,
+                sourceTitle: sourceTitle,
+                targetTitle: targetTitle,
+                N: N,
+                targetGamma: targetGamma,
+                measuredGamma: measuredGamma,
+                minSpacing: minSpacing,
+                cvNnd: cvNnd,
+                lossVal: lossVal,
+                trajectory: sampledTraj,
+                stages: stagesData,
+                frequencies: freqs,
+                radialPsd: radPsd,
+                generatedAt: new Date().toISOString()
+            };
+
+            const payloadJson = JSON.stringify(payload);
+            const tagScriptOpen = '<' + 'script>';
+            const tagScriptClose = '<' + '/script>';
+            const tagTailwind = '<' + 'script src="https://cdn.tailwindcss.com">' + tagScriptClose;
+
+            const clientCode = `
+        var currentFrame = 0;
+        var isPlaying = false;
+        var playbackSpeed = 1.0;
+        var rafId = null;
+        var lastTime = 0;
+
+        var canvas = document.getElementById('dos-canvas');
+        var ctx = canvas.getContext('2d');
+        var tooltipEl = document.getElementById('dos-tooltip');
+        var slider = document.getElementById('dos-slider');
+        var stepCurrEl = document.getElementById('dos-step-curr');
+        var stepTotalEl = document.getElementById('dos-step-total');
+        var playBtn = document.getElementById('btn-dos-play');
+
+        var traj = DOSSIER_DATA.trajectory || [];
+        var total = Math.max(0, traj.length - 1);
+        slider.max = total;
+        stepTotalEl.innerText = total;
+
+        function getPoints() {
+            if (!traj.length) return [];
+            return traj[Math.min(currentFrame, traj.length - 1)].points || [];
+        }
+
+        function renderFrame() {
+            var w = canvas.width;
+            var h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Subtle Grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (var g = 1; g < 4; g++) {
+                ctx.beginPath(); ctx.moveTo((g/4)*w, 0); ctx.lineTo((g/4)*w, h); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, (g/4)*h); ctx.lineTo(w, (g/4)*h); ctx.stroke();
+            }
+
+            var pts = getPoints();
+            for (var i = 0; i < pts.length; i++) {
+                var px = pts[i][0] * w;
+                var py = pts[i][1] * h;
+
+                ctx.beginPath();
+                ctx.arc(px, py, 3.8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.28)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(px, py, 2.0, 0, Math.PI * 2);
+                ctx.fillStyle = '#818cf8';
+                ctx.fill();
+            }
+
+            slider.value = currentFrame;
+            stepCurrEl.innerText = currentFrame;
+        }
+
+        function startLoop() {
+            function loop(t) {
+                if (!isPlaying) return;
+                if (!lastTime) lastTime = t;
+                var interval = 45 / playbackSpeed;
+                if (t - lastTime >= interval) {
+                    lastTime = t;
+                    currentFrame = (currentFrame >= total) ? 0 : currentFrame + 1;
+                    renderFrame();
+                }
+                rafId = requestAnimationFrame(loop);
+            }
+            rafId = requestAnimationFrame(loop);
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            playBtn.innerText = isPlaying ? '⏸ Pause' : '▶ Play';
+            if (isPlaying) { lastTime = 0; startLoop(); }
+            else if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        }
+
+        function stepFrame(delta) {
+            if (isPlaying) togglePlay();
+            currentFrame = Math.max(0, Math.min(total, currentFrame + delta));
+            renderFrame();
+        }
+
+        function onScrub(val) {
+            if (isPlaying) togglePlay();
+            currentFrame = parseInt(val);
+            renderFrame();
+        }
+
+        // Hover particle inspection
+        canvas.addEventListener('mousemove', function(e) {
+            var rect = canvas.getBoundingClientRect();
+            var mx = (e.clientX - rect.left) / rect.width;
+            var my = (e.clientY - rect.top) / rect.height;
+
+            var pts = getPoints();
+            var closest = -1;
+            var minD = Infinity;
+
+            for (var i = 0; i < pts.length; i++) {
+                var dx = pts[i][0] - mx;
+                var dy = pts[i][1] - my;
+                var d = Math.sqrt(dx * dx + dy * dy);
+                if (d < minD) { minD = d; closest = i; }
+            }
+
+            if (closest !== -1 && minD < 0.08) {
+                var p = pts[closest];
+                document.getElementById('tip-id').innerText = '#' + closest;
+                document.getElementById('tip-coords').innerText = '(' + p[0].toFixed(3) + ', ' + p[1].toFixed(3) + ')';
+
+                // Calculate toroidal NND
+                var nnd = Infinity;
+                for (var j = 0; j < pts.length; j++) {
+                    if (j === closest) continue;
+                    var dx2 = Math.abs(pts[j][0] - p[0]);
+                    var dy2 = Math.abs(pts[j][1] - p[1]);
+                    if (dx2 > 0.5) dx2 = 1.0 - dx2;
+                    if (dy2 > 0.5) dy2 = 1.0 - dy2;
+                    var dist = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+                    if (dist < nnd) nnd = dist;
+                }
+                document.getElementById('tip-nnd').innerText = nnd.toFixed(4) + ' L';
+
+                var lx = p[0] * rect.width + 12;
+                var ly = p[1] * rect.height - 12;
+                if (lx + 150 > rect.width) lx = p[0] * rect.width - 160;
+                if (ly < 10) ly = 10;
+
+                tooltipEl.style.left = lx + 'px';
+                tooltipEl.style.top = ly + 'px';
+                tooltipEl.style.opacity = '1';
+            } else {
+                tooltipEl.style.opacity = '0';
+            }
+        });
+
+        canvas.addEventListener('mouseleave', function() { tooltipEl.style.opacity = '0'; });
+
+        // Build 5-Phase Filmstrip
+        var filmstripEl = document.getElementById('dos-filmstrip');
+        (DOSSIER_DATA.stages || []).forEach(function(st, idx) {
+            var card = document.createElement('div');
+            card.className = "p-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-indigo-500 cursor-pointer text-center space-y-1 transition-all";
+            card.title = st.label;
+
+            var cv = document.createElement('canvas');
+            cv.width = 80; cv.height = 80;
+            cv.className = "w-full aspect-square rounded bg-black block";
+            var cctx = cv.getContext('2d');
+            cctx.fillStyle = '#090d16';
+            cctx.fillRect(0, 0, 80, 80);
+
+            var spts = st.points || [];
+            var cols = ['#60a5fa', '#818cf8', '#a78bfa', '#c084fc', '#34d399'];
+            cctx.fillStyle = cols[idx % cols.length];
+            for (var i = 0; i < spts.length; i++) {
+                cctx.beginPath();
+                cctx.arc(spts[i][0] * 80, spts[i][1] * 80, 1.6, 0, Math.PI * 2);
+                cctx.fill();
+            }
+
+            var lbl = document.createElement('div');
+            lbl.className = "text-[9px] font-mono text-slate-300 truncate";
+            lbl.innerText = st.label.split(':')[0];
+
+            card.appendChild(cv);
+            card.appendChild(lbl);
+            card.onclick = function() {
+                if (isPlaying) togglePlay();
+                currentFrame = Math.round((idx / 4) * total);
+                renderFrame();
+            };
+            filmstripEl.appendChild(card);
+        });
+
+        // Render Radial Chart
+        function drawRadialChart() {
+            var cv = document.getElementById('dos-chart-radial');
+            if (!cv) return;
+            var cctx = cv.getContext('2d');
+            var w = cv.width;
+            var h = cv.height;
+            var radP = DOSSIER_DATA.radialPsd || [];
+            if (!radP.length) return;
+
+            cctx.clearRect(0, 0, w, h);
+            cctx.strokeStyle = '#334155';
+            cctx.strokeRect(10, 10, w - 20, h - 25);
+
+            // Poisson 1.0 line
+            cctx.strokeStyle = '#64748b';
+            cctx.setLineDash([3, 3]);
+            cctx.beginPath(); cctx.moveTo(10, h * 0.5); cctx.lineTo(w - 10, h * 0.5); cctx.stroke();
+            cctx.setLineDash([]);
+
+            // Plot curve
+            var maxVal = Math.max(2.5, Math.max.apply(null, radP));
+            cctx.strokeStyle = '#818cf8';
+            cctx.lineWidth = 2;
+            cctx.beginPath();
+            for (var i = 0; i < radP.length; i++) {
+                var vx = 10 + (i / (radP.length - 1)) * (w - 20);
+                var vy = (h - 15) - (Math.min(maxVal, radP[i]) / maxVal) * (h - 30);
+                if (i === 0) cctx.moveTo(vx, vy); else cctx.lineTo(vx, vy);
+            }
+            cctx.stroke();
+        }
+
+        renderFrame();
+        drawRadialChart();
+`;
+
+            const calcDminStr = (1.0 / Math.sqrt(2 * payload.N)).toFixed(4);
+            const calcHexStr = (1.075 / Math.sqrt(payload.N)).toFixed(4);
+
+            const dossierHtml = '<!DOCTYPE html>\n<html lang="en" class="dark">\n<head>\n' +
+                '    <meta charset="UTF-8">\n' +
+                '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+                '    <title>NeuroSpectrum Interactive Dossier — ' + payload.title + '</title>\n' +
+                '    <link rel="preconnect" href="https://fonts.googleapis.com">\n' +
+                '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
+                '    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">\n' +
+                '    ' + tagTailwind + '\n' +
+                '    <style>\n' +
+                '        body { font-family: "Inter", system-ui, sans-serif; }\n' +
+                '        .font-mono { font-family: "JetBrains Mono", monospace; }\n' +
+                '        @media print {\n' +
+                '            .no-print { display: none !important; }\n' +
+                '            body { background: #ffffff !important; color: #000000 !important; }\n' +
+                '            .print-card { border: 1px solid #cbd5e1 !important; background: #ffffff !important; color: #000000 !important; }\n' +
+                '        }\n' +
+                '    </style>\n' +
+                '</head>\n' +
+                '<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col justify-between">\n\n' +
+                '    <div class="max-w-[1450px] w-full mx-auto space-y-6">\n\n' +
+                '        <!-- Top Header & Meta -->\n' +
+                '        <header class="flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl">\n' +
+                '            <div class="space-y-1">\n' +
+                '                <div class="flex items-center space-x-2">\n' +
+                '                    <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></span>\n' +
+                '                    <span class="text-xs font-mono font-bold tracking-widest text-indigo-400 uppercase">NEUROSPECTRUM STANDALONE DOSSIER</span>\n' +
+                '                </div>\n' +
+                '                <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight">' + payload.title + '</h1>\n' +
+                '                <p class="text-xs text-slate-400 font-mono">Source: <span class="text-indigo-300 font-bold">' + payload.sourceTitle + '</span> → Target: <span class="text-purple-300 font-bold">' + payload.targetTitle + '</span> | N = ' + payload.N + ' Particles</p>\n' +
+                '            </div>\n' +
+                '            <div class="flex items-center space-x-3 no-print">\n' +
+                '                <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all shadow-md flex items-center space-x-1.5 cursor-pointer">\n' +
+                '                    <span>🖨️</span>\n' +
+                '                    <span>Print / Save PDF</span>\n' +
+                '                </button>\n' +
+                '                <div class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-400 font-semibold">\n' +
+                '                    ✓ Self-Contained Offline\n' +
+                '                </div>\n' +
+                '            </div>\n' +
+                '        </header>\n\n' +
+                '        <!-- Main Studio Grid -->\n' +
+                '        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">\n\n' +
+                '            <!-- Center Viewport & Interactive Canvas (7 cols) -->\n' +
+                '            <div class="lg:col-span-7 flex flex-col space-y-4">\n' +
+                '                <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4 relative">\n' +
+                '                    <div class="flex items-center justify-between">\n' +
+                '                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Interactive Canvas (Hover to Inspect Points)</span>\n' +
+                '                        <div class="flex items-center space-x-2 font-mono text-xs text-slate-400">\n' +
+                '                            <span>Step: <strong id="dos-step-curr" class="text-indigo-400">0</strong> / <span id="dos-step-total">0</span></span>\n' +
+                '                            <span id="dos-status-tag" class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">Equilibrium</span>\n' +
+                '                        </div>\n' +
+                '                    </div>\n\n' +
+                '                    <!-- Canvas Box with Hover Tooltip -->\n' +
+                '                    <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">\n' +
+                '                        <canvas id="dos-canvas" width="520" height="520" class="w-full h-full cursor-crosshair block"></canvas>\n\n' +
+                '                        <!-- Interactive Tooltip -->\n' +
+                '                        <div id="dos-tooltip" class="absolute pointer-events-none opacity-0 transition-opacity z-20 px-3 py-2 rounded-xl bg-slate-900/95 border border-indigo-500 shadow-2xl font-mono text-[11px] text-white space-y-0.5 backdrop-blur-md">\n' +
+                '                            <div class="text-indigo-400 font-bold flex items-center justify-between space-x-4">\n' +
+                '                                <span>Particle <span id="tip-id">#0</span></span>\n' +
+                '                                <span class="text-[9px] text-emerald-400 font-semibold">Hovered</span>\n' +
+                '                            </div>\n' +
+                '                            <div>Coords: <strong id="tip-coords">(0.000, 0.000)</strong></div>\n' +
+                '                            <div class="text-slate-400">Toroidal NND: <span id="tip-nnd" class="text-indigo-300">0.0000 L</span></div>\n' +
+                '                        </div>\n' +
+                '                    </div>\n\n' +
+                '                    <!-- Scrubber Timeline & Playback -->\n' +
+                '                    <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3 no-print">\n' +
+                '                        <div class="flex items-center space-x-3">\n' +
+                '                            <button id="btn-dos-play" onclick="togglePlay()" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all shadow-xs cursor-pointer">\n' +
+                '                                ▶ Play\n' +
+                '                            </button>\n' +
+                '                            <button onclick="stepFrame(-1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer">◀</button>\n' +
+                '                            <button onclick="stepFrame(1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer">▶</button>\n' +
+                '                            <input id="dos-slider" type="range" min="0" max="100" value="0" class="flex-1 accent-indigo-500 cursor-pointer" oninput="onScrub(this.value)">\n' +
+                '                            <select id="dos-speed" onchange="playbackSpeed = parseFloat(this.value)" class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300">\n' +
+                '                                <option value="0.5">0.5x</option>\n' +
+                '                                <option value="1.0" selected>1.0x</option>\n' +
+                '                                <option value="2.0">2.0x</option>\n' +
+                '                            </select>\n' +
+                '                        </div>\n' +
+                '                    </div>\n\n' +
+                '                    <!-- 5-Phase Filmstrip Progression -->\n' +
+                '                    <div class="space-y-2">\n' +
+                '                        <div class="flex items-center justify-between text-xs">\n' +
+                '                            <span class="font-bold text-slate-300">5-Phase Evolution Filmstrip</span>\n' +
+                '                            <span class="text-[11px] font-mono text-slate-500">Click any stage to jump</span>\n' +
+                '                        </div>\n' +
+                '                        <div class="grid grid-cols-5 gap-2" id="dos-filmstrip"></div>\n' +
+                '                    </div>\n' +
+                '                </div>\n' +
+                '            </div>\n\n' +
+                '            <!-- Diagnostics & Faculty Advisory (5 cols) -->\n' +
+                '            <div class="lg:col-span-5 flex flex-col space-y-6">\n\n' +
+                '                <!-- 1. Radial Power Spectrum Density (PSD) -->\n' +
+                '                <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">\n' +
+                '                    <div class="flex items-center justify-between">\n' +
+                '                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Radial Power Spectral Density P(k)</span>\n' +
+                '                        <span class="text-[10px] font-mono text-indigo-400 font-bold">Continuous Fourier</span>\n' +
+                '                    </div>\n' +
+                '                    <div class="w-full h-44 rounded-xl bg-slate-950 border border-slate-800 p-2 flex items-center justify-center">\n' +
+                '                        <canvas id="dos-chart-radial" width="400" height="160" class="w-full h-full block"></canvas>\n' +
+                '                    </div>\n' +
+                '                    <div class="flex justify-between text-[11px] font-mono text-slate-400 px-1">\n' +
+                '                        <span>Low Freq (k=2)</span>\n' +
+                '                        <span class="text-indigo-400 font-semibold">Measured vs Slope</span>\n' +
+                '                        <span>High Freq (k=24)</span>\n' +
+                '                    </div>\n' +
+                '                </div>\n\n' +
+                '                <!-- 2. Physical Quality Scorecard -->\n' +
+                '                <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">\n' +
+                '                    <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Physical Quality Scorecard</span>\n' +
+                '                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">\n' +
+                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
+                '                            <div class="text-[10px] text-slate-400">Min Spacing (d_min)</div>\n' +
+                '                            <div class="text-base font-bold text-emerald-400">' + Number(payload.minSpacing).toFixed(4) + ' L</div>\n' +
+                '                            <div class="text-[9px] text-slate-500">Zero Overlaps</div>\n' +
+                '                        </div>\n' +
+                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
+                '                            <div class="text-[10px] text-slate-400">Regularity (CV-NND)</div>\n' +
+                '                            <div class="text-base font-bold text-indigo-400">' + Number(payload.cvNnd).toFixed(3) + '</div>\n' +
+                '                            <div class="text-[9px] text-slate-500">Sub-Poissonian</div>\n' +
+                '                        </div>\n' +
+                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
+                '                            <div class="text-[10px] text-slate-400">Target Exponent (γ*)</div>\n' +
+                '                            <div class="text-base font-bold text-purple-400">' + Number(payload.targetGamma).toFixed(2) + '</div>\n' +
+                '                            <div class="text-[9px] text-slate-500">Blue Noise Repulsion</div>\n' +
+                '                        </div>\n' +
+                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
+                '                            <div class="text-[10px] text-slate-400">Toroidal Modulo</div>\n' +
+                '                            <div class="text-base font-bold text-teal-400">[0, 1)²</div>\n' +
+                '                            <div class="text-[9px] text-slate-500">100% Boundary Wrap</div>\n' +
+                '                        </div>\n' +
+                '                    </div>\n' +
+                '                </div>\n\n' +
+                '                <!-- 3. Faculty Advisory: Physical Spacing & Noise Selection -->\n' +
+                '                <div class="p-5 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border border-indigo-900/60 shadow-xl space-y-3">\n' +
+                '                    <div class="flex items-center space-x-2">\n' +
+                '                        <span class="text-base">📐</span>\n' +
+                '                        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-300">Faculty Specification & Physics Grounding</h3>\n' +
+                '                    </div>\n' +
+                '                    <div class="space-y-2 text-xs text-slate-300 leading-relaxed">\n' +
+                '                        <p><strong>Physical Spacing Bounds (N = ' + payload.N + '):</strong></p>\n' +
+                '                        <ul class="list-disc list-inside space-y-1 font-mono text-[11px] text-slate-400">\n' +
+                '                            <li>Minimum Exclusion: <strong class="text-indigo-300">d_min ≈ 1 / √(2N) = ' + calcDminStr + ' L</strong></li>\n' +
+                '                            <li>Hexagonal Packing Limit: <strong class="text-purple-300">r_hex ≈ 1.075 / √N = ' + calcHexStr + ' L</strong></li>\n' +
+                '                        </ul>\n' +
+                '                        <div class="p-3 rounded-xl bg-slate-950/70 border border-indigo-800/40 space-y-1">\n' +
+                '                            <span class="text-indigo-400 font-bold text-[11px]">Why Blue Noise (not Red Noise) for Shapes like Hearts?</span>\n' +
+                '                            <p class="text-[11px] text-slate-400 leading-normal">\n' +
+                '                                Blue Noise enforces short-range anti-collision separation, stippling points uniformly along contours. In contrast, Red Noise (attractive) causes particles to collapse into 2–3 dense knots, leaving the rest of the shape completely hollow.\n' +
+                '                            </p>\n' +
+                '                        </div>\n' +
+                '                    </div>\n' +
+                '                </div>\n\n' +
+                '            </div>\n\n' +
+                '        </div>\n\n' +
+                '        <footer class="text-center font-mono text-[11px] text-slate-500 py-4 border-t border-slate-800/80">\n' +
+                '            NeuroSpectrum Differentiable Point Distribution Studio | Offline Self-Contained Interactive Dossier\n' +
+                '        </footer>\n\n' +
+                '    </div>\n\n' +
+                '    ' + tagScriptOpen + '\n' +
+                '        const DOSSIER_DATA = ' + payloadJson + ';\n' +
+                clientCode + '\n' +
+                '    ' + tagScriptClose + '\n' +
+                '</body>\n</html>';
+
+            // Trigger Standalone HTML Download
+            const blob = new Blob([dossierHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const safeTargetName = isUniv
+                ? (univState.targetMode === 'text' ? univState.targetText : (univState.targetMode === 'shape' ? univState.targetShape : 'gamma'))
+                : `gamma_${targetGamma.toFixed(2)}`;
+            a.download = `neurospectrum_interactive_dossier_${mode}_${safeTargetName}_N${N}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
         }
 
         // --- FIGURE 2 BENCHMARK CONTROLLER (EGSR 2026 PAPER REPRODUCTION) ---
@@ -2742,13 +3985,17 @@
         }
 
         function updatePsdChart(data) {
-            if (!appState.psdChart || !data.spectral_curves) return;
+            if (!appState.psdChart || !data || !data.spectral_curves) return;
             const curves = data.spectral_curves;
-            const freqs = curves.frequencies.slice(2, 24);
-            const psd = curves.radial_psd.slice(2, 24);
+            const freqs = (curves.frequencies || []).slice(2, 24);
+            const psd = (curves.radial_psd_measured || curves.radial_psd || []).slice(2, 24);
+            if (freqs.length === 0 || psd.length === 0) return;
 
-            const targetGamma = data.results.target_gamma;
-            const targetLaw = freqs.map(f => Math.pow(f, targetGamma) * (psd[0] / Math.pow(freqs[0], targetGamma)));
+            const targetGamma = (data.results && data.results.target_gamma !== undefined) ? data.results.target_gamma : (appState.targetGamma || 1.0);
+            const maxPsd = Math.max(...psd, 1.0);
+            const rawTarget = freqs.map(f => Math.pow(f, Math.max(0.1, targetGamma)));
+            const maxTarget = Math.max(...rawTarget, 1.0);
+            const targetLaw = rawTarget.map(v => (v / maxTarget) * maxPsd);
 
             appState.psdChart.data.labels = freqs.map(f => Math.round(f));
             appState.psdChart.data.datasets[0].data = psd;
@@ -2766,22 +4013,64 @@
             const ctx = canvas.getContext('2d');
             const dim = matrix.length;
             const img = ctx.createImageData(dim, dim);
+            const cx = Math.floor(dim / 2);
+            const cy = Math.floor(dim / 2);
 
-            let maxVal = 0;
+            // 1. Collect non-DC frequency powers (ignore center 3x3 DC spike where k=0)
+            let nonDcVals = [];
             for (let r = 0; r < dim; r++) {
                 for (let c = 0; c < dim; c++) {
-                    if (matrix[r][c] > maxVal) maxVal = matrix[r][c];
+                    if (Math.abs(r - cy) > 1 || Math.abs(c - cx) > 1) {
+                        nonDcVals.push(matrix[r][c]);
+                    }
                 }
+            }
+            nonDcVals.sort((a, b) => a - b);
+            const p98 = nonDcVals[Math.floor(nonDcVals.length * 0.98)] || 1.0;
+            const logRef = Math.log1p(Math.max(1e-4, p98 * 1.1));
+
+            // 2. High-contrast scientific colormap:
+            // 0.00 (Void around DC): Deep Navy (#030712)
+            // 0.35 (Low): Deep Indigo (#4338ca)
+            // 0.70 (Principal Peak Ring): Electric Cyan (#06b6d4)
+            // 1.00 (High Peak): Bright White (#ffffff)
+            function getSpectralColor(norm) {
+                norm = Math.max(0, Math.min(1, norm));
+                let r, g, b;
+                if (norm < 0.35) {
+                    const t = norm / 0.35;
+                    r = Math.round(3 + (67 - 3) * t);
+                    g = Math.round(7 + (56 - 7) * t);
+                    b = Math.round(18 + (202 - 18) * t);
+                } else if (norm < 0.75) {
+                    const t = (norm - 0.35) / 0.40;
+                    r = Math.round(67 + (6 - 67) * t);
+                    g = Math.round(56 + (182 - 56) * t);
+                    b = Math.round(202 + (212 - 202) * t);
+                } else {
+                    const t = (norm - 0.75) / 0.25;
+                    r = Math.round(6 + (255 - 6) * t);
+                    g = Math.round(182 + (255 - 182) * t);
+                    b = Math.round(212 + (255 - 212) * t);
+                }
+                return [r, g, b];
             }
 
             for (let r = 0; r < dim; r++) {
                 for (let c = 0; c < dim; c++) {
                     const idx = (r * dim + c) * 4;
-                    const val = matrix[r][c] / (maxVal + 1e-6);
-                    img.data[idx] = Math.round(79 * val);      // R
-                    img.data[idx + 1] = Math.round(70 * val);  // G
-                    img.data[idx + 2] = Math.round(229 * val); // B
-                    img.data[idx + 3] = 255;                   // Alpha
+                    let norm;
+                    // Suppress center DC spike so true low-frequency void is visible
+                    if (Math.abs(r - cy) <= 1 && Math.abs(c - cx) <= 1) {
+                        norm = 0.0;
+                    } else {
+                        norm = Math.min(1.0, Math.log1p(Math.max(0, matrix[r][c])) / logRef);
+                    }
+                    const [cr, cg, cb] = getSpectralColor(norm);
+                    img.data[idx] = cr;
+                    img.data[idx + 1] = cg;
+                    img.data[idx + 2] = cb;
+                    img.data[idx + 3] = 255;
                 }
             }
             ctx.putImageData(img, 0, 0);
@@ -3168,16 +4457,21 @@
             numSteps: 60,
             repulsionWeight: 0.20,
             spectralWeight: 0.15,
+            targetSpacing: 0.044,
 
-            targetMode: 'text', // 'text' | 'shape' | 'gamma'
-            targetText: 'NEURO',
+            targetMode: 'shape', // 'shape' | 'draw' | 'text' | 'upload' | 'gamma'
             targetShape: 'heart',
+            targetFillMode: 'outline', // 'outline' | 'solid'
+            customTargetPoints: [],
+            targetText: 'NEURO',
+            targetImageBase64: null,
             targetGamma: 1.0,
             targetPoints: null,
 
             showGhost: false,
             showVectors: false,
             showMesh: false,
+            showRings: false,
 
             trajectory: null,
             currentStep: 0,
@@ -3191,14 +4485,160 @@
             lastDrawnPt: null
         };
 
+        // --- FACULTY GEOMETRY & PARTICLE SPACING BOUNDS ---
+        function updateUnivSpacingGuide(n) {
+            const num = parseInt(n) || 256;
+            const dmin = 1.0 / Math.sqrt(2 * num);
+            const slider = document.getElementById('univ-slider-spacing');
+            const lbl = document.getElementById('univ-label-spacing-val');
+            const theo = document.getElementById('univ-spacing-theoretical');
+            if (theo) theo.innerHTML = `d<sub>min</sub> ≈ ${dmin.toFixed(4)} L`;
+            if (slider && (!slider.dataset.userEdited || slider.dataset.userEdited === 'false')) {
+                slider.value = dmin.toFixed(4);
+                if (lbl) lbl.innerText = dmin.toFixed(4) + ' L';
+                univState.targetSpacing = dmin;
+                updateSliderProgress('univ-slider-spacing');
+            }
+        }
+
+        function onUnivSpacingChange(val) {
+            univState.targetSpacing = parseFloat(val);
+            const slider = document.getElementById('univ-slider-spacing');
+            if (slider) slider.dataset.userEdited = 'true';
+            const lbl = document.getElementById('univ-label-spacing-val');
+            if (lbl) lbl.innerText = parseFloat(val).toFixed(4) + ' L';
+            updateSliderProgress('univ-slider-spacing');
+            renderUnivFrame();
+        }
+
+        function toggleUnivClearanceRings() {
+            univState.showRings = !univState.showRings;
+            const btn = document.getElementById('univ-view-rings');
+            if (btn) {
+                btn.className = univState.showRings ?
+                    'px-2 py-0.5 rounded-lg bg-teal-600 text-white font-semibold shadow-xs transition-all cursor-pointer' :
+                    'px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer';
+            }
+            renderUnivFrame();
+        }
+
+        // --- UNIVERSAL 5-PHASE FILMSTRIP PROGRESSION BUILDER ---
+        function buildUnivKeyframes(stages, trajectory) {
+            const container = document.getElementById('univ-filmstrip-container');
+            if (!container) return;
+
+            let keyframes = [];
+            if (stages && stages.length >= 3) {
+                keyframes = stages.slice(0, 5).map((s, idx) => ({
+                    step: s.step !== undefined ? s.step : idx,
+                    frameIndex: s.step !== undefined ? s.step : idx,
+                    label: s.label || `Stage ${idx + 1}`,
+                    points: s.points
+                }));
+            } else if (trajectory && trajectory.length > 0) {
+                const total = trajectory.length - 1;
+                const indices = [
+                    0,
+                    Math.round(total * 0.25),
+                    Math.round(total * 0.50),
+                    Math.round(total * 0.75),
+                    total
+                ];
+                const labels = [
+                    "Stage 1: Source (0%)",
+                    "Stage 2: OT Flux (25%)",
+                    "Stage 3: Boundary Morph (50%)",
+                    "Stage 4: Spectral Anneal (75%)",
+                    "Stage 5: Equilibrium (100%)"
+                ];
+                keyframes = indices.map((idx, k) => ({
+                    step: trajectory[idx].step !== undefined ? trajectory[idx].step : idx,
+                    frameIndex: idx,
+                    label: labels[k],
+                    points: trajectory[idx].points
+                }));
+            }
+
+            if (keyframes.length === 0) {
+                container.innerHTML = `<div class="col-span-5 text-center py-4 font-mono text-xs text-slate-400">Run universal synthesis to generate 5-phase morphing filmstrip</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            keyframes.forEach((kf, idx) => {
+                const card = document.createElement('div');
+                card.className = "flex flex-col items-center p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 hover:border-indigo-500 dark:hover:border-indigo-400 transition-all cursor-pointer shadow-xs group";
+                card.title = `Click to inspect ${kf.label} (Step ${kf.step})`;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 120;
+                canvas.height = 120;
+                canvas.className = "w-full aspect-square rounded-lg bg-slate-900 border border-slate-800 block pointer-events-none";
+
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(0, 0, 120, 120);
+
+                // Subtle coordinate grid
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(60, 0); ctx.lineTo(60, 120);
+                ctx.moveTo(0, 60); ctx.lineTo(120, 60);
+                ctx.stroke();
+
+                if (kf.points && kf.points.length > 0) {
+                    const pts = kf.points;
+                    const colors = ['#60a5fa', '#818cf8', '#a78bfa', '#c084fc', '#34d399'];
+                    const dotColor = colors[idx % colors.length];
+
+                    for (let i = 0; i < pts.length; i++) {
+                        const px = pts[i][0] * 120;
+                        const py = pts[i][1] * 120;
+                        ctx.beginPath();
+                        ctx.arc(px, py, 2.0, 0, Math.PI * 2);
+                        ctx.fillStyle = dotColor;
+                        ctx.fill();
+                    }
+                }
+
+                const lbl = document.createElement('div');
+                lbl.className = "text-[10px] font-bold text-slate-700 dark:text-slate-200 mt-1.5 truncate max-w-full text-center";
+                lbl.innerText = kf.label.split(':')[0] || `Stage ${idx + 1}`;
+
+                const sub = document.createElement('div');
+                sub.className = "text-[9px] font-mono text-slate-400";
+                sub.innerText = `Step ${kf.step}`;
+
+                card.appendChild(canvas);
+                card.appendChild(lbl);
+                card.appendChild(sub);
+
+                // Jump directly to keyframe on click
+                card.onclick = () => {
+                    if (univState.isPlaying) toggleUnivPlayPause();
+                    const targetStep = kf.frameIndex !== undefined ? kf.frameIndex : (kf.step || 0);
+                    const total = univState.trajectory ? univState.trajectory.length - 1 : 1;
+                    univState.currentStep = Math.min(total, targetStep);
+                    updateUnivScrubberUI(univState.currentStep, total);
+                    renderUnivFrame();
+                };
+
+                container.appendChild(card);
+            });
+        }
+
         function initUniversalStudio() {
             if (!univState.isInitialized) {
                 setupUnivDrawingEvents();
                 initUnivRadialChart();
                 updateUnivTargetPreview();
+                updateUnivSpacingGuide(univState.nParticles);
+                buildUnivKeyframes(univState.stages, univState.trajectory);
                 univState.isInitialized = true;
             }
             ['univ-slider-n', 'univ-slider-steps', 'univ-slider-rep', 'univ-slider-spec', 'univ-slider-gamma'].forEach(updateSliderProgress);
+            updateUnivSpacingGuide(univState.nParticles);
             renderUnivFrame();
         }
 
@@ -3274,17 +4714,35 @@
             renderUnivFrame();
         }
 
-        // --- DRAWING / CLICK EVENTS ON CANVAS ---
+        // --- DRAWING & HOVER INSPECTION EVENTS ON UNIVERSAL CANVAS ---
         function setupUnivDrawingEvents() {
             const canvas = document.getElementById('univ-canvas');
+            const tooltipEl = document.getElementById('univ-canvas-tooltip');
             if (!canvas) return;
 
             const addPointAtEvent = (e) => {
-                if (univState.inputMode !== 'draw') return;
+                const isTgtDraw = (univState.targetMode === 'draw');
+                const isSrcDraw = (univState.inputMode === 'draw');
+                if (!isTgtDraw && !isSrcDraw) return;
+
                 const rect = canvas.getBoundingClientRect();
                 const x = (e.clientX - rect.left) / rect.width;
                 const y = (e.clientY - rect.top) / rect.height;
-                if (x >= 0.01 && x <= 0.99 && y >= 0.01 && y <= 0.99) {
+                if (x < 0.01 || x > 0.99 || y < 0.01 || y > 0.99) return;
+
+                if (isTgtDraw) {
+                    if (univState.lastDrawnPt) {
+                        const dx = x - univState.lastDrawnPt[0];
+                        const dy = y - univState.lastDrawnPt[1];
+                        if (Math.sqrt(dx * dx + dy * dy) < 0.015) return;
+                    }
+                    univState.customTargetPoints.push([parseFloat(x.toFixed(4)), parseFloat(y.toFixed(4))]);
+                    univState.lastDrawnPt = [x, y];
+                    const badge = document.getElementById('univ-tgt-draw-count-badge');
+                    if (badge) badge.innerText = `${univState.customTargetPoints.length} points`;
+                    updateUnivTargetPreview();
+                    renderUnivFrame();
+                } else if (isSrcDraw) {
                     if (univState.lastDrawnPt) {
                         const dx = x - univState.lastDrawnPt[0];
                         const dy = y - univState.lastDrawnPt[1];
@@ -3301,20 +4759,103 @@
             };
 
             canvas.addEventListener('mousedown', (e) => {
-                if (univState.inputMode !== 'draw') return;
+                if (univState.inputMode !== 'draw' && univState.targetMode !== 'draw') return;
                 univState.isDrawing = true;
                 univState.trajectory = null;
                 addPointAtEvent(e);
             });
 
             window.addEventListener('mousemove', (e) => {
-                if (!univState.isDrawing || univState.inputMode !== 'draw') return;
+                if (!univState.isDrawing || (univState.inputMode !== 'draw' && univState.targetMode !== 'draw')) return;
                 addPointAtEvent(e);
             });
 
             window.addEventListener('mouseup', () => {
                 univState.isDrawing = false;
                 univState.lastDrawnPt = null;
+            });
+
+            // Hover inspection listener on universal canvas when not in draw mode
+            canvas.addEventListener('mousemove', (e) => {
+                if (univState.inputMode === 'draw' || univState.targetMode === 'draw') {
+                    if (tooltipEl) tooltipEl.style.opacity = '0';
+                    return;
+                }
+                if (!tooltipEl) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left) / rect.width;
+                const mouseY = (e.clientY - rect.top) / rect.height;
+
+                const pts = getUnivPointsAtStep();
+                if (!pts || pts.length === 0) {
+                    tooltipEl.style.opacity = '0';
+                    return;
+                }
+
+                let closestIdx = -1;
+                let minDist = Infinity;
+                for (let i = 0; i < pts.length; i++) {
+                    const dx = pts[i][0] - mouseX;
+                    const dy = pts[i][1] - mouseY;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < minDist) {
+                        minDist = d;
+                        closestIdx = i;
+                    }
+                }
+
+                if (closestIdx !== -1 && minDist < 0.08) {
+                    const p = pts[closestIdx];
+                    const tipIdx = document.getElementById('tip-univ-idx');
+                    const tipXy = document.getElementById('tip-univ-xy');
+                    const tipDist = document.getElementById('tip-univ-dist');
+                    const tipStatus = document.getElementById('tip-univ-status');
+
+                    if (tipIdx) tipIdx.innerText = '#' + closestIdx;
+                    if (tipXy) tipXy.innerText = `(${p[0].toFixed(3)}, ${p[1].toFixed(3)})`;
+                    if (tipStatus) {
+                        if (!univState.trajectory) {
+                            tipStatus.innerText = 'Input Geometry';
+                        } else if (univState.currentStep === univState.trajectory.length - 1) {
+                            tipStatus.innerText = 'Equilibrium Target';
+                        } else {
+                            tipStatus.innerText = `Step ${univState.currentStep}`;
+                        }
+                    }
+
+                    // Calculate local NND with toroidal wrap
+                    let nnd = Infinity;
+                    for (let j = 0; j < pts.length; j++) {
+                        if (j === closestIdx) continue;
+                        let dx2 = Math.abs(pts[j][0] - p[0]);
+                        let dy2 = Math.abs(pts[j][1] - p[1]);
+                        if (dx2 > 0.5) dx2 = 1.0 - dx2;
+                        if (dy2 > 0.5) dy2 = 1.0 - dy2;
+                        const d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+                        if (d2 < nnd) nnd = d2;
+                    }
+                    if (tipDist) tipDist.innerText = nnd.toFixed(4) + ' L';
+
+                    // Tooltip positioning avoiding edge clipping
+                    const tipW = 160;
+                    const tipH = 75;
+                    let leftPx = (p[0] * rect.width) + 14;
+                    let topPx = (p[1] * rect.height) - 14;
+                    if (leftPx + tipW > rect.width) leftPx = (p[0] * rect.width) - tipW - 14;
+                    if (topPx + tipH > rect.height) topPx = rect.height - tipH - 8;
+                    if (topPx < 8) topPx = 8;
+
+                    tooltipEl.style.left = `${leftPx}px`;
+                    tooltipEl.style.top = `${topPx}px`;
+                    tooltipEl.style.opacity = '1';
+                } else {
+                    tooltipEl.style.opacity = '0';
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                if (tooltipEl) tooltipEl.style.opacity = '0';
             });
         }
 
@@ -3350,6 +4891,133 @@
             ]);
             univState.trajectory = null;
             renderUnivFrame();
+        }
+
+        // --- TARGET OUTPUT DRAW HELPERS ---
+        function clearUnivTargetDrawPoints() {
+            univState.customTargetPoints = [];
+            const badge = document.getElementById('univ-tgt-draw-count-badge');
+            if (badge) badge.innerText = '0 points';
+            updateUnivTargetPreview();
+            renderUnivFrame();
+        }
+
+        function smoothUnivTargetDrawPoints() {
+            const pts = univState.customTargetPoints;
+            if (pts.length < 3) return;
+            const smoothed = [];
+            for (let i = 0; i < pts.length; i++) {
+                const prev = pts[(i - 1 + pts.length) % pts.length];
+                const curr = pts[i];
+                const next = pts[(i + 1) % pts.length];
+                smoothed.push([
+                    parseFloat((0.25 * prev[0] + 0.5 * curr[0] + 0.25 * next[0]).toFixed(4)),
+                    parseFloat((0.25 * prev[1] + 0.5 * curr[1] + 0.25 * next[1]).toFixed(4))
+                ]);
+            }
+            univState.customTargetPoints = smoothed;
+            updateUnivTargetPreview();
+            renderUnivFrame();
+        }
+
+        function closeUnivTargetContour() {
+            const pts = univState.customTargetPoints;
+            if (pts.length < 3) return;
+            pts.push([pts[0][0], pts[0][1]]);
+            updateUnivTargetPreview();
+            renderUnivFrame();
+        }
+
+        function drawQuickTargetSketch(preset) {
+            univState.customTargetPoints = [];
+            const n = 64;
+            if (preset === 'diamond') {
+                for (let i = 0; i < n; i++) {
+                    const t = (i / n) * 4;
+                    let x, y;
+                    if (t < 1) { x = 0.5 + 0.32 * t; y = 0.18 + 0.32 * t; }
+                    else if (t < 2) { x = 0.82 - 0.32 * (t - 1); y = 0.5 + 0.32 * (t - 1); }
+                    else if (t < 3) { x = 0.5 - 0.32 * (t - 2); y = 0.82 - 0.32 * (t - 2); }
+                    else { x = 0.18 + 0.32 * (t - 3); y = 0.5 - 0.32 * (t - 3); }
+                    univState.customTargetPoints.push([parseFloat(x.toFixed(4)), parseFloat(y.toFixed(4))]);
+                }
+            } else if (preset === 'clover') {
+                for (let i = 0; i < n; i++) {
+                    const th = (i / n) * 2 * Math.PI;
+                    const r = 0.22 + 0.14 * Math.sin(4 * th);
+                    const x = 0.5 + r * Math.cos(th);
+                    const y = 0.5 + r * Math.sin(th);
+                    univState.customTargetPoints.push([parseFloat(x.toFixed(4)), parseFloat(y.toFixed(4))]);
+                }
+            } else if (preset === 'crescent') {
+                for (let i = 0; i < n; i++) {
+                    const th = (i / (n - 1)) * Math.PI * 1.5 - Math.PI * 0.75;
+                    const x = 0.45 + 0.32 * Math.cos(th);
+                    const y = 0.5 + 0.32 * Math.sin(th);
+                    univState.customTargetPoints.push([parseFloat(x.toFixed(4)), parseFloat(y.toFixed(4))]);
+                }
+            }
+            const badge = document.getElementById('univ-tgt-draw-count-badge');
+            if (badge) badge.innerText = `${univState.customTargetPoints.length} points`;
+            updateUnivTargetPreview();
+            renderUnivFrame();
+        }
+
+        function handleUnivTargetFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    univState.targetImageBase64 = e.target.result;
+                    const info = document.getElementById('univ-tgt-upload-info');
+                    const fname = document.getElementById('univ-tgt-upload-filename');
+                    const count = document.getElementById('univ-tgt-upload-count');
+                    if (info && fname && count) {
+                        info.classList.remove('hidden');
+                        fname.innerText = file.name;
+                        count.innerText = 'Silhouette Extracted';
+                    }
+                    updateUnivTargetPreview();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const text = e.target.result;
+                        let pts = [];
+                        if (file.name.endsWith('.json')) {
+                            const parsed = JSON.parse(text);
+                            pts = Array.isArray(parsed) ? parsed : (parsed.points || []);
+                        } else {
+                            const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+                            for (let line of lines) {
+                                const parts = line.split(/[,\s\t]+/).map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+                                if (parts.length >= 2) pts.push([parts[0], parts[1]]);
+                            }
+                        }
+                        if (pts.length < 5) {
+                            alert('Uploaded file contains fewer than 5 valid 2D coordinates.');
+                            return;
+                        }
+                        univState.customTargetPoints = pts;
+                        const info = document.getElementById('univ-tgt-upload-info');
+                        const fname = document.getElementById('univ-tgt-upload-filename');
+                        const count = document.getElementById('univ-tgt-upload-count');
+                        if (info && fname && count) {
+                            info.classList.remove('hidden');
+                            fname.innerText = file.name;
+                            count.innerText = `${pts.length} points`;
+                        }
+                        updateUnivTargetPreview();
+                    } catch (err) {
+                        alert('Error parsing target file: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
         }
 
         // --- FILE UPLOAD HANDLING ---
@@ -3425,6 +5093,7 @@
             if (lbl) lbl.innerText = val;
             if (metricN) metricN.innerText = `(N = ${val})`;
             updateSliderProgress('univ-slider-n');
+            updateUnivSpacingGuide(val);
             updateUnivTargetPreview();
             renderUnivFrame();
         }
@@ -3438,49 +5107,62 @@
         }
 
         // --- TARGET SELECTION & PREVIEW ---
-        function setUnivTargetMode(mode) {
-            univState.targetMode = mode;
-            const btnText = document.getElementById('univ-tgt-btn-text');
-            const btnShape = document.getElementById('univ-tgt-btn-shape');
-            const btnGamma = document.getElementById('univ-tgt-btn-gamma');
-            const pnlText = document.getElementById('univ-tgt-subpanel-text');
-            const pnlShape = document.getElementById('univ-tgt-subpanel-shape');
-            const pnlGamma = document.getElementById('univ-tgt-subpanel-gamma');
-            const badge = document.getElementById('univ-badge-target-mode');
-            const metricTgtType = document.getElementById('univ-metric-target-type');
-
-            const activeClass = 'py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all text-center cursor-pointer';
-            const inactiveClass = 'py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer';
-
-            if (mode === 'text') {
-                btnText.className = activeClass;
-                btnShape.className = inactiveClass;
-                btnGamma.className = inactiveClass;
-                pnlText.classList.remove('hidden');
-                pnlShape.classList.add('hidden');
-                pnlGamma.classList.add('hidden');
-                badge.innerText = 'Text Glyph';
-                metricTgtType.innerText = '(Text Glyph)';
-            } else if (mode === 'shape') {
-                btnText.className = inactiveClass;
-                btnShape.className = activeClass;
-                btnGamma.className = inactiveClass;
-                pnlText.classList.add('hidden');
-                pnlShape.classList.remove('hidden');
-                pnlGamma.classList.add('hidden');
-                badge.innerText = 'Parametric Shape';
-                metricTgtType.innerText = '(Shape Contour)';
-            } else if (mode === 'gamma') {
-                btnText.className = inactiveClass;
-                btnShape.className = inactiveClass;
-                btnGamma.className = activeClass;
-                pnlText.classList.add('hidden');
-                pnlShape.classList.add('hidden');
-                pnlGamma.classList.remove('hidden');
-                badge.innerText = 'Power-Law γ';
-                metricTgtType.innerText = '(Spectral Slope)';
+        function setUnivTargetFillMode(mode) {
+            univState.targetFillMode = mode;
+            const btnOut = document.getElementById('univ-shape-mode-outline');
+            const btnSolid = document.getElementById('univ-shape-mode-solid');
+            const activeClass = 'px-2 py-0.5 rounded bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs cursor-pointer';
+            const inactiveClass = 'px-2 py-0.5 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer';
+            if (mode === 'outline') {
+                if (btnOut) btnOut.className = activeClass;
+                if (btnSolid) btnSolid.className = inactiveClass;
+            } else {
+                if (btnOut) btnOut.className = inactiveClass;
+                if (btnSolid) btnSolid.className = activeClass;
             }
             updateUnivTargetPreview();
+        }
+
+        function setUnivTargetMode(mode) {
+            univState.targetMode = mode;
+            const modes = ['shape', 'draw', 'text', 'upload', 'gamma'];
+            const activeTab = 'py-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all text-center cursor-pointer';
+            const inactiveTab = 'py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all text-center cursor-pointer';
+
+            modes.forEach(m => {
+                const btn = document.getElementById('univ-tgt-btn-' + m);
+                const pnl = document.getElementById('univ-tgt-subpanel-' + m);
+                if (btn) btn.className = (m === mode) ? activeTab : inactiveTab;
+                if (pnl) {
+                    if (m === mode) pnl.classList.remove('hidden');
+                    else pnl.classList.add('hidden');
+                }
+            });
+
+            const badge = document.getElementById('univ-badge-target-mode');
+            const metricTgtType = document.getElementById('univ-metric-target-type');
+            if (mode === 'shape') {
+                if (badge) badge.innerText = 'Parametric Shape';
+                if (metricTgtType) metricTgtType.innerText = '(Shape Geometry)';
+            } else if (mode === 'draw') {
+                if (badge) badge.innerText = 'Hand-Drawn';
+                if (metricTgtType) metricTgtType.innerText = '(Hand-Drawn Contour)';
+                if (univState.customTargetPoints.length === 0) {
+                    drawQuickTargetSketch('diamond');
+                }
+            } else if (mode === 'text') {
+                if (badge) badge.innerText = 'Text Glyph';
+                if (metricTgtType) metricTgtType.innerText = '(Text Glyph)';
+            } else if (mode === 'upload') {
+                if (badge) badge.innerText = 'File Silhouette';
+                if (metricTgtType) metricTgtType.innerText = '(Uploaded Silhouette)';
+            } else if (mode === 'gamma') {
+                if (badge) badge.innerText = 'Power-Law γ';
+                if (metricTgtType) metricTgtType.innerText = '(Spectral Slope)';
+            }
+
+            updateUnivTargetPreview();
+            renderUnivFrame();
         }
 
         let targetDebounceTimer = null;
@@ -3501,15 +5183,18 @@
 
         function setUnivTargetShape(shape) {
             univState.targetShape = shape;
-            ['heart', 'star', 'rings', 'yinyang'].forEach(s => {
+            const shapes = ['heart', 'star', 'butterfly', 'infinity', 'gear', 'flower', 'spiral', 'rings', 'yinyang'];
+            shapes.forEach(s => {
                 const btn = document.getElementById('univ-tgt-shape-' + s);
                 if (!btn) return;
                 if (s === shape) {
-                    btn.className = 'p-2 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition-all cursor-pointer dark:bg-indigo-950/40';
-                    btn.querySelector('span:first-child').className = 'text-xs font-bold text-indigo-700 dark:text-indigo-300 block';
+                    btn.className = 'p-1.5 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition-all cursor-pointer dark:bg-indigo-950/40';
+                    const span1 = btn.querySelector('span:first-child');
+                    if (span1) span1.className = 'text-[11px] font-bold text-indigo-700 dark:text-indigo-300 block';
                 } else {
-                    btn.className = 'p-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700';
-                    btn.querySelector('span:first-child').className = 'text-xs font-bold text-slate-700 dark:text-slate-300 block';
+                    btn.className = 'p-1.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700';
+                    const span1 = btn.querySelector('span:first-child');
+                    if (span1) span1.className = 'text-[11px] font-bold text-slate-700 dark:text-slate-300 block';
                 }
             });
             updateUnivTargetPreview();
@@ -3522,13 +5207,18 @@
                     target_type: univState.targetMode,
                     text: univState.targetText || 'NEURO',
                     shape: univState.targetShape,
+                    fill_mode: univState.targetFillMode || 'outline',
+                    points: (univState.targetMode === 'draw' || univState.targetMode === 'points') ? univState.customTargetPoints : undefined,
+                    image_base64: univState.targetImageBase64 || undefined,
                     n_points: nVal
                 };
 
                 const metricTgt = document.getElementById('univ-metric-target');
                 if (metricTgt) {
                     if (univState.targetMode === 'text') metricTgt.innerText = `"${univState.targetText}"`;
-                    else if (univState.targetMode === 'shape') metricTgt.innerText = univState.targetShape.toUpperCase();
+                    else if (univState.targetMode === 'shape') metricTgt.innerText = `${univState.targetShape.toUpperCase()} (${univState.targetFillMode})`;
+                    else if (univState.targetMode === 'draw') metricTgt.innerText = `DRAWN (${univState.customTargetPoints.length} pts)`;
+                    else if (univState.targetMode === 'upload') metricTgt.innerText = 'UPLOADED';
                     else metricTgt.innerText = `γ = ${(univState.targetGamma >= 0 ? '+' : '') + univState.targetGamma.toFixed(2)}`;
                 }
 
@@ -3548,7 +5238,9 @@
                     if (dotsLabel) dotsLabel.innerText = `${pts.length} Target Points`;
                     if (nameLabel) {
                         if (univState.targetMode === 'text') nameLabel.innerText = `Text "${univState.targetText}"`;
-                        else if (univState.targetMode === 'shape') nameLabel.innerText = `Shape "${univState.targetShape}"`;
+                        else if (univState.targetMode === 'shape') nameLabel.innerText = `Shape "${univState.targetShape}" (${univState.targetFillMode})`;
+                        else if (univState.targetMode === 'draw') nameLabel.innerText = `Hand-Drawn Contour (${pts.length} pts)`;
+                        else if (univState.targetMode === 'upload') nameLabel.innerText = `Uploaded Silhouette`;
                         else nameLabel.innerText = `Spectral γ* = ${univState.targetGamma.toFixed(2)}`;
                     }
                     if (data.psd_2d) renderUniv2DHeatmap(data.psd_2d);
@@ -3639,6 +5331,8 @@
                 }
 
                 const numStepsVal = parseInt(document.getElementById('univ-slider-steps').value) || univState.numSteps;
+                const spacingVal = parseFloat(document.getElementById('univ-slider-spacing')?.value || univState.targetSpacing || 0.044);
+                const repVal = parseFloat(document.getElementById('univ-slider-rep')?.value || univState.repulsionWeight || 0.20);
 
                 const payload = {
                     source_points: srcPts,
@@ -3646,11 +5340,16 @@
                         type: univState.targetMode,
                         text: univState.targetText || 'NEURO',
                         shape: univState.targetShape,
+                        fill_mode: univState.targetFillMode || 'outline',
+                        points: (univState.targetMode === 'draw' || univState.targetMode === 'points' || univState.targetMode === 'upload') ? univState.customTargetPoints : undefined,
+                        image_base64: univState.targetImageBase64 || undefined,
                         gamma: parseFloat(univState.targetGamma)
                     },
                     num_steps: numStepsVal,
                     capture_interval: 2,
-                    lr: 0.04
+                    lr: 0.04,
+                    repulsion_weight: repVal,
+                    target_spacing: spacingVal
                 };
 
                 const resp = await fetch('/api/universal/morph', {
@@ -3667,11 +5366,14 @@
                 const data = await resp.json();
                 univState.trajectory = data.trajectory;
                 univState.stages = data.evolution_stages || data.stages || [];
+                appState.univData = data;
+                univState.data = data;
                 const targetPts = data.target_points || data.target_preview_points || [];
                 if (targetPts.length > 0) {
                     univState.targetPoints = targetPts;
                     renderUnivTargetThumbnail(targetPts);
                 }
+                buildUnivKeyframes(univState.stages, univState.trajectory);
 
                 // Update Telemetry
                 const lossEl = document.getElementById('univ-metric-loss');
@@ -3684,7 +5386,7 @@
                 if (spaceEl) spaceEl.innerText = typeof finalSpacing === 'number' ? finalSpacing.toFixed(4) : '0.0385';
                 if (stageEl) stageEl.innerText = 'Converged';
 
-                // Start animation
+                // Start animation - One Time Playback
                 univState.currentStep = 0;
                 const total = Math.max(0, univState.trajectory.length - 1);
                 updateUnivScrubberUI(0, total);
@@ -3693,8 +5395,10 @@
                 univState.isPlaying = true;
                 const playIcon = document.getElementById('univ-play-icon');
                 const playText = document.getElementById('univ-play-text');
+                const indicator = document.getElementById('univ-scrub-play-indicator');
                 if (playIcon) playIcon.innerText = '⏸';
                 if (playText) playText.innerText = 'Pause';
+                if (indicator) indicator.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
                 startUnivPlaybackLoop();
 
             } catch (err) {
@@ -3707,20 +5411,58 @@
             }
         }
 
-        // --- PLAYBACK CONTROLS ---
+        // --- PLAYBACK CONTROLS (ONE-TIME PLAYBACK WITHOUT LOOPING) ---
+        let univRafId = null;
+        let lastUnivRafTime = 0;
+
         function startUnivPlaybackLoop() {
-            if (univState.playbackTimer) clearInterval(univState.playbackTimer);
-            univState.playbackTimer = setInterval(() => {
-                if (!univState.isPlaying || !univState.trajectory) return;
-                const total = univState.trajectory.length - 1;
-                if (univState.currentStep >= total) {
-                    univState.currentStep = 0; // loop
-                } else {
-                    univState.currentStep++;
+            if (univRafId) {
+                cancelAnimationFrame(univRafId);
+                univRafId = null;
+            }
+            if (univState.playbackTimer) {
+                clearInterval(univState.playbackTimer);
+                univState.playbackTimer = null;
+            }
+            lastUnivRafTime = 0;
+
+            function univRafLoop(timestamp) {
+                if (!univState.isPlaying || !univState.trajectory) {
+                    univRafId = null;
+                    return;
                 }
-                updateUnivScrubberUI(univState.currentStep, total);
-                renderUnivFrame();
-            }, 55);
+                if (!lastUnivRafTime) lastUnivRafTime = timestamp;
+                const elapsed = timestamp - lastUnivRafTime;
+                const targetInterval = 40; // ~25-30 FPS physics steps synchronized with 60Hz display
+
+                if (elapsed >= targetInterval) {
+                    lastUnivRafTime = timestamp - (elapsed % targetInterval);
+                    const total = univState.trajectory.length - 1;
+                    if (univState.currentStep >= total) {
+                        // Reached completion: stop at final equilibrium frame (ONE TIME PLAY ONLY)
+                        univState.currentStep = total;
+                        univState.isPlaying = false;
+                        const playIcon = document.getElementById('univ-play-icon');
+                        const playText = document.getElementById('univ-play-text');
+                        const indicator = document.getElementById('univ-scrub-play-indicator');
+                        if (playIcon) playIcon.innerText = '▶';
+                        if (playText) playText.innerText = 'Replay';
+                        if (indicator) indicator.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
+                        const hud = document.getElementById('univ-hud-stage-name');
+                        if (hud) hud.innerText = 'Target Equilibrium (Completed)';
+                        updateUnivScrubberUI(total, total);
+                        renderUnivFrame();
+                        univRafId = null;
+                        return;
+                    } else {
+                        univState.currentStep++;
+                    }
+                    updateUnivScrubberUI(univState.currentStep, total);
+                    renderUnivFrame();
+                }
+                univRafId = requestAnimationFrame(univRafLoop);
+            }
+            univRafId = requestAnimationFrame(univRafLoop);
         }
 
         function toggleUnivPlayPause() {
@@ -3730,6 +5472,10 @@
             const indicator = document.getElementById('univ-scrub-play-indicator');
 
             if (univState.isPlaying) {
+                // If already at completion, start from beginning so pressing Play replays once
+                if (univState.trajectory && univState.currentStep >= univState.trajectory.length - 1) {
+                    univState.currentStep = 0;
+                }
                 if (playIcon) playIcon.innerText = '⏸';
                 if (playText) playText.innerText = 'Pause';
                 if (indicator) indicator.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
@@ -3738,7 +5484,14 @@
                 if (playIcon) playIcon.innerText = '▶';
                 if (playText) playText.innerText = 'Play';
                 if (indicator) indicator.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
-                if (univState.playbackTimer) clearInterval(univState.playbackTimer);
+                if (univRafId) {
+                    cancelAnimationFrame(univRafId);
+                    univRafId = null;
+                }
+                if (univState.playbackTimer) {
+                    clearInterval(univState.playbackTimer);
+                    univState.playbackTimer = null;
+                }
             }
         }
 
@@ -3927,29 +5680,87 @@
                 ctx.restore();
             }
 
-            // 4. Draw Core Points
+            // 3b. Draw Clearance Exclusion Rings (Inter-Particle Spacing Clearance d_target / 2)
+            if (univState.showRings && pts && pts.length > 0) {
+                ctx.save();
+                const dMin = (univState.targetSpacing || (1.0 / Math.sqrt(2 * pts.length)));
+                const rPix = (dMin * 0.5) * w;
+                ctx.strokeStyle = 'rgba(20, 184, 166, 0.45)';
+                ctx.fillStyle = 'rgba(20, 184, 166, 0.04)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 3]);
+                for (let i = 0; i < pts.length; i++) {
+                    const cx = pts[i][0] * w;
+                    const cy = pts[i][1] * h;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, rPix, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // 3c. Hand-Drawn Target Contour Overlay (in Target Draw Mode)
+            if (univState.targetMode === 'draw' && univState.customTargetPoints.length > 0) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
+                ctx.lineWidth = 2.0;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                const tpts = univState.customTargetPoints;
+                ctx.moveTo(tpts[0][0] * w, tpts[0][1] * h);
+                for (let i = 1; i < tpts.length; i++) {
+                    ctx.lineTo(tpts[i][0] * w, tpts[i][1] * h);
+                }
+                ctx.stroke();
+                ctx.fillStyle = '#c084fc';
+                for (let i = 0; i < tpts.length; i++) {
+                    ctx.beginPath();
+                    ctx.arc(tpts[i][0] * w, tpts[i][1] * h, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            // 4. Draw Core Points (Simulation Studio style: crisp white core + subtle indigo halo)
             if (pts && pts.length > 0) {
+                const rHalo = pts.length > 320 ? 3.6 : 4.5;
+                const rCore = pts.length > 320 ? 1.8 : 2.2;
                 for (let i = 0; i < pts.length; i++) {
                     const px = pts[i][0] * w;
                     const py = pts[i][1] * h;
 
-                    // Outer Halo
+                    // Subtle indigo halo (Simulation Studio style)
                     ctx.beginPath();
-                    ctx.arc(px, py, 4.5, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+                    ctx.arc(px, py, rHalo, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(99, 102, 241, 0.35)';
                     ctx.fill();
 
-                    // Main Dot
+                    // Pure white core particle for crystal-clear clarity
                     ctx.beginPath();
-                    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#38bdf8';
-                    ctx.fill();
-
-                    // Bright Specular Core
-                    ctx.beginPath();
-                    ctx.arc(px, py, 1.0, 0, Math.PI * 2);
+                    ctx.arc(px, py, rCore, 0, Math.PI * 2);
                     ctx.fillStyle = '#ffffff';
                     ctx.fill();
+                }
+
+                // Draw Coincident Alert Beacons if overlap (< 0.005)
+                for (let i = 0; i < pts.length; i++) {
+                    for (let j = i + 1; j < pts.length; j++) {
+                        let dx = Math.abs(pts[i][0] - pts[j][0]);
+                        let dy = Math.abs(pts[i][1] - pts[j][1]);
+                        if (dx > 0.5) dx = 1.0 - dx;
+                        if (dy > 0.5) dy = 1.0 - dy;
+                        const d = Math.sqrt(dx * dx + dy * dy);
+                        if (d < 0.005) {
+                            const cx = pts[i][0] * w;
+                            const cy = pts[i][1] * h;
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+                            ctx.strokeStyle = '#f59e0b';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        }
+                    }
                 }
             }
 

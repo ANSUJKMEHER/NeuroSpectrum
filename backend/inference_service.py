@@ -116,14 +116,15 @@ class InferenceService:
         from spectrum import compute_continuous_point_spectrum
 
         tgt_type = target_spec.get("type", "text").lower()
+        fill_mode = target_spec.get("fill_mode", "outline")
         if tgt_type == "text":
             text_str = target_spec.get("text", "NEURO").strip() or "NEURO"
             pts = TargetGeometryFactory.create_from_text(text_str, n_points=n_points)
             label = f"Text: \"{text_str}\""
         elif tgt_type == "shape":
             shape_name = target_spec.get("shape", "heart").lower()
-            pts = TargetGeometryFactory.create_target(shape_name, n_points=n_points)
-            label = f"Shape: {shape_name.capitalize()}"
+            pts = TargetGeometryFactory.create_target(shape_name, n_points=n_points, fill_mode=fill_mode)
+            label = f"Shape: {shape_name.capitalize()} ({fill_mode.capitalize()})"
         elif tgt_type == "image":
             import io, base64
             from PIL import Image
@@ -138,10 +139,17 @@ class InferenceService:
             else:
                 pts = TargetGeometryFactory.create_target("star", n_points=n_points)
                 label = "Star (Default)"
-        elif tgt_type == "points":
+        elif tgt_type in ["points", "draw"]:
             raw_pts = target_spec.get("points", [])
-            pts = np.asarray(raw_pts, dtype=np.float32) if len(raw_pts) > 0 else TargetGeometryFactory.create_target("star", n_points=n_points)
-            label = "Custom Points"
+            if len(raw_pts) > 1:
+                pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=n_points)
+                label = "Hand-Drawn Contour"
+            elif len(raw_pts) == 1:
+                pts = np.asarray(raw_pts * n_points, dtype=np.float32)
+                label = "Single Point"
+            else:
+                pts = TargetGeometryFactory.create_target("star", n_points=n_points)
+                label = "Star (Default)"
         else:
             pts = TargetGeometryFactory.create_target("heart", n_points=n_points)
             label = "Heart Shape"
@@ -162,10 +170,13 @@ class InferenceService:
         target_spec: Dict[str, Any],
         num_steps: int = 60,
         capture_interval: int = 2,
-        lr: float = 0.04
+        lr: float = 0.04,
+        repulsion_weight: float = 0.25,
+        target_spacing: Optional[float] = None
     ) -> Dict[str, Any]:
         """
-        Runs universal any-to-any point morphing via Optimal Transport and Backpropagation.
+        Runs universal any-to-any point morphing via Optimal Transport and Backpropagation
+        with exact pairwise particle spacing preservation and anti-collision guarantees.
         """
         import numpy as np
         from universal_synthesizer import TargetGeometryFactory, UniversalBackpropMorpher
@@ -173,7 +184,7 @@ class InferenceService:
         # Parse source points
         if isinstance(source_points, str):
             src_str = source_points.lower()
-            if src_str in ["spiral", "star", "heart", "double_rings"]:
+            if src_str in ["spiral", "star", "heart", "butterfly", "infinity", "gear", "flower", "yinyang", "rings", "double_rings"]:
                 src_pts = TargetGeometryFactory.create_target(src_str, n_points=256)
             elif src_str == "grid":
                 import data
@@ -183,6 +194,12 @@ class InferenceService:
                 src_pts = data.generate_jittered_grid(1, 256)[0].numpy()
             else:
                 src_pts = np.random.uniform(0.05, 0.95, size=(256, 2)).astype(np.float32)
+        elif isinstance(source_points, dict) and "points" in source_points:
+            raw_pts = source_points["points"]
+            if len(raw_pts) > 1:
+                src_pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=256)
+            else:
+                src_pts = np.asarray(raw_pts, dtype=np.float32)
         elif isinstance(source_points, list):
             src_pts = np.asarray(source_points, dtype=np.float32)
         else:
@@ -192,12 +209,13 @@ class InferenceService:
 
         # Parse target points
         tgt_type = target_spec.get("type", "text").lower()
+        fill_mode = target_spec.get("fill_mode", "outline")
         if tgt_type == "text":
             text_str = target_spec.get("text", "NEURO").strip() or "NEURO"
             tgt_pts = TargetGeometryFactory.create_from_text(text_str, n_points=N)
         elif tgt_type == "shape":
             shape_name = target_spec.get("shape", "heart").lower()
-            tgt_pts = TargetGeometryFactory.create_target(shape_name, n_points=N)
+            tgt_pts = TargetGeometryFactory.create_target(shape_name, n_points=N, fill_mode=fill_mode)
         elif tgt_type == "image":
             import io, base64
             from PIL import Image
@@ -210,12 +228,24 @@ class InferenceService:
                 tgt_pts = TargetGeometryFactory.create_from_image(img, n_points=N)
             else:
                 tgt_pts = TargetGeometryFactory.create_target("star", n_points=N)
-        elif tgt_type == "points":
+        elif tgt_type in ["points", "draw"]:
             raw_pts = target_spec.get("points", [])
-            tgt_pts = np.asarray(raw_pts, dtype=np.float32) if len(raw_pts) > 0 else TargetGeometryFactory.create_target("star", n_points=N)
+            if len(raw_pts) > 1:
+                tgt_pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=N)
+            elif len(raw_pts) == 1:
+                tgt_pts = np.asarray(raw_pts * N, dtype=np.float32)
+            else:
+                tgt_pts = TargetGeometryFactory.create_target("star", n_points=N)
         else:
             tgt_pts = TargetGeometryFactory.create_target("heart", n_points=N)
 
         morpher = UniversalBackpropMorpher(lr=lr)
-        res = morpher.morph(src_pts, tgt_pts, num_steps=num_steps, capture_interval=capture_interval)
+        res = morpher.morph(
+            src_pts,
+            tgt_pts,
+            num_steps=num_steps,
+            capture_interval=capture_interval,
+            target_spacing=target_spacing,
+            repulsion_weight=repulsion_weight
+        )
         return res

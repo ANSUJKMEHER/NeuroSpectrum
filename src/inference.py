@@ -416,6 +416,7 @@ class FrozenInferenceEngine:
             "spectral_curves": {
                 "frequencies": freqs.tolist(),
                 "radial_psd_measured": radial_psd.tolist(),
+                "radial_psd": radial_psd.tolist(),
                 "radial_psd_target": target_radial_psd.tolist(),
                 "psd_2d": psd_2d.tolist()
             },

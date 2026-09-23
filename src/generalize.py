@@ -182,3 +182,13 @@ def run_amortized_cost_comparison(
         })
         
     return comparison_table
+
+def run_unseen_gamma_evaluation(
+    engine: FrozenInferenceEngine,
+    interpolation_gammas: Optional[List[float]] = None,
+    extrapolation_gammas: Optional[List[float]] = None,
+    n_particles: int = 256,
+    num_steps: int = 40,
+    seeds: Optional[Any] = None
+) -> Dict[str, Any]:
+    return run_unseen_gamma_interpolation_benchmark(engine, n_particles=n_particles, num_steps=num_steps)

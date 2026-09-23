@@ -586,3 +586,21 @@ class StatefulTrainingSession:
 
 if __name__ == "__main__":
     train_continuous_gamma(num_epochs=80, batch_size=4)
+
+def probe_model(energy_model, target_gammas, n_particles: int = 128, num_steps: int = 30, dt: float = 0.02):
+    sim = DifferentiableSimulationEngine(energy_model, dt=dt, num_steps=num_steps)
+    analyzer = DifferentiableSpectralAnalyzer()
+    out = {}
+    with torch.no_grad():
+        for g in target_gammas:
+            init_pts = torch.rand(1, n_particles, 2)
+            gamma_t = torch.tensor([g], dtype=torch.float32)
+            final_pts = sim(init_pts, gamma_t)
+            spec = analyzer(final_pts, gamma_t)
+            ghat = float(spec['measured_gamma'].item())
+            out[str(g)] = {
+                'target_gamma': g,
+                'measured_gamma': ghat,
+                'absolute_error': abs(ghat - g)
+            }
+    return out

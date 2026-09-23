@@ -92,6 +92,7 @@ class UniversalTargetPreviewRequest(BaseModel):
     target_type: str = "text"
     text: Optional[str] = "NEURO"
     shape: Optional[str] = "heart"
+    fill_mode: Optional[str] = "outline"
     image_base64: Optional[str] = None
     points: Optional[List[List[float]]] = None
     n_points: int = 256
@@ -103,6 +104,8 @@ class UniversalMorphRequest(BaseModel):
     num_steps: int = 60
     capture_interval: int = 2
     lr: float = 0.04
+    repulsion_weight: float = 0.25
+    target_spacing: Optional[float] = None
 
 
 class CustomPointsUploadRequest(BaseModel):
@@ -426,6 +429,7 @@ def universal_target_preview(req: UniversalTargetPreviewRequest):
             "type": req.target_type,
             "text": req.text,
             "shape": req.shape,
+            "fill_mode": req.fill_mode or "outline",
             "image_base64": req.image_base64,
             "points": req.points
         }
@@ -443,7 +447,9 @@ def universal_morph(req: UniversalMorphRequest):
             target_spec=req.target_spec,
             num_steps=req.num_steps,
             capture_interval=req.capture_interval,
-            lr=req.lr
+            lr=req.lr,
+            repulsion_weight=req.repulsion_weight,
+            target_spacing=req.target_spacing
         )
         return res
     except Exception as e:
@@ -523,6 +529,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 # --- Serve Frontend Static Files ---
+react_dist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend-react', 'dist'))
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
+if os.path.exists(react_dist_dir):
+    app.mount("/", StaticFiles(directory=react_dist_dir, html=True), name="frontend_react")
+elif os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend_legacy")
