@@ -198,6 +198,19 @@ class DifferentiableSimulationEngine(nn.Module):
         if gamma.dim() == 0:
             gamma = gamma.unsqueeze(0)
 
+        # Proposal Edge Case A1 & Q1: Check for NaN, Inf, and zero particle degeneracy
+        if torch.isnan(points_init).any() or torch.isinf(points_init).any():
+            raise ValueError("Input coordinates contain NaN or Inf values (EC-A1).")
+        if points_init.shape[1] == 0:
+            raise ValueError("Input coordinate tensor contains 0 particles (EC-Q1).")
+
+        # Proposal Edge Case A2: Canonicalize coordinates into toroidal domain [0, L)
+        points_init = torch.remainder(points_init, self.L)
+
+        # Proposal Edge Case A3: N=1 single particle has zero interaction pairs
+        if points_init.shape[1] == 1:
+            return points_init.squeeze(0) if is_unbatched else points_init
+
         points = points_init
         if torch.is_grad_enabled() and not points.requires_grad:
             points = points.detach().requires_grad_(True)

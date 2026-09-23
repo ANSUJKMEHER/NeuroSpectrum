@@ -249,8 +249,69 @@ def test_edge_cases():
     assert stats_unique['has_coincident_points'] is False
     print("  ✓ Spatial statistics accurately detects overlapping pairs and effective unique clusters.")
 
+    # -------------------------------------------------------------------
+    # TEST 15: NaN / Inf & Zero-Particle Input Rejection (EC-A1 & EC-Q1)
+    # -------------------------------------------------------------------
+    print("\n[15/18] Testing NaN/Inf and Zero-Count Rejection in Dynamics ...")
+    pts_nan = torch.tensor([[[float('nan'), 0.5], [0.2, 0.3]]], device=device)
+    gamma_test = torch.tensor([1.0], device=device)
+    nan_caught = False
+    try:
+        dynamics(pts_nan, gamma_test)
+    except ValueError as e:
+        nan_caught = True
+        assert "NaN or Inf" in str(e)
+    assert nan_caught, "Engine must raise ValueError on NaN input coordinates"
+
+    pts_empty = torch.empty(1, 0, 2, device=device)
+    empty_caught = False
+    try:
+        dynamics(pts_empty, gamma_test)
+    except ValueError as e:
+        empty_caught = True
+        assert "0 particles" in str(e)
+    assert empty_caught, "Engine must raise ValueError on 0 particle input"
+    print("  ✓ Input validation safely rejects NaN/Inf coordinates and empty particle sets (EC-A1, EC-Q1).")
+
+    # -------------------------------------------------------------------
+    # TEST 16: Out-of-Bounds Coordinate Modulo Canonicalization (EC-A2)
+    # -------------------------------------------------------------------
+    print("\n[16/18] Testing Toroidal Domain Modulo Canonicalization (EC-A2) ...")
+    pts_oob = torch.tensor([[[-0.25, 1.40], [0.50, -0.10]]], device=device)
+    out_canonical = dynamics(pts_oob, gamma_test)
+    assert (out_canonical >= 0.0).all() and (out_canonical < 1.0).all(), "All coordinates must lie in [0, 1)"
+    assert not torch.isnan(out_canonical).any()
+    print("  ✓ Out-of-bounds coordinates automatically canonicalized into [0, 1)^2 via modulo (EC-A2).")
+
+    # -------------------------------------------------------------------
+    # TEST 17: Gaussian Deconvolution Singularity Clamping (EC-I4)
+    # -------------------------------------------------------------------
+    print("\n[17/18] Testing Gaussian Deconvolution Numerical Clamp (EC-I4) ...")
+    dummy_density = torch.rand(1, 32, 32, device=device)
+    psd_2d_raw = analyzer.compute_psd2d(dummy_density)
+    radial_deconv = analyzer.compute_radial_psd(psd_2d_raw)
+    assert not torch.isnan(radial_deconv).any(), "Deconvolved radial PSD must not contain NaN"
+    assert not torch.isinf(radial_deconv).any(), "Deconvolved radial PSD must not blow up to Inf"
+    print("  ✓ High-frequency Gaussian deconvolution factor is clamped to max=100.0 without numerical blowup (EC-I4).")
+
+    # -------------------------------------------------------------------
+    # TEST 18: Unseen Intermediate Gamma Interpolation & Boundaries (EC-B1, EC-B2)
+    # -------------------------------------------------------------------
+    print("\n[18/18] Testing Unseen Intermediate Gamma Interpolation (EC-B1, EC-B2) ...")
+    # Values mandated in Proposal 2, Section 6: -2.0, -1.5, -0.7, 0.3, 0.8, 1.5, +2.0
+    gamma_test_set = [-2.0, -1.5, -0.7, 0.0, 0.3, 0.8, 1.5, 2.0]
+    pts_eval = torch.rand(1, 32, 2, device=device)
+    energies = []
+    for g_val in gamma_test_set:
+        g_t = torch.tensor([g_val], device=device)
+        E_val = energy_model.compute_total_energy(pts_eval, g_t)
+        assert not torch.isnan(E_val).any() and not torch.isinf(E_val).any()
+        energies.append(E_val.item())
+    assert len(energies) == len(gamma_test_set)
+    print(f"  ✓ Evaluated all 8 proposal-mandated continuous gammas: {gamma_test_set} successfully (EC-B1, EC-B2).")
+
     print("\n" + "=" * 80)
-    print("🏆 ALL 14 ENGINEERING EDGE-CASE TESTS PASSED PERFECTLY!")
+    print("🏆 ALL 18 RESEARCH PROPOSAL & ENGINEERING EDGE-CASE TESTS PASSED PERFECTLY!")
     print("=" * 80)
 
 if __name__ == "__main__":

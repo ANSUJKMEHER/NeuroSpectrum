@@ -137,8 +137,6 @@ class TargetGeometryFactory:
         # Normalize to [0.05, 0.95]
         x_norm = (x_pts - x_pts.min()) / (x_pts.max() - x_pts.min() + 1e-8) * 0.85 + 0.075
         y_norm = (y_pts - y_pts.min()) / (y_pts.max() - y_pts.min() + 1e-8) * 0.85 + 0.075
-        # Flip y so text is upright
-        y_norm = 1.0 - y_norm
         
         return np.stack([x_norm, y_norm], axis=-1).astype(np.float32)
 
@@ -174,7 +172,7 @@ class TargetGeometryFactory:
         x_pts = (idx_flat % w).astype(np.float32) + np.random.uniform(-0.5, 0.5, n_points)
         
         x_norm = x_pts / w
-        y_norm = 1.0 - (y_pts / h) # Invert y for standard Cartesian orientation
+        y_norm = y_pts / h # Standard screen/canvas orientation
         
         return np.stack([np.clip(x_norm, 0.02, 0.98), np.clip(y_norm, 0.02, 0.98)], axis=-1).astype(np.float32)
 
@@ -205,7 +203,7 @@ class TargetGeometryFactory:
             x_raw = 16 * (np.sin(t) ** 3)
             y_raw = 13 * np.cos(t) - 5 * np.cos(2 * t) - 2 * np.cos(3 * t) - np.cos(4 * t)
             x = 0.5 + (x_raw / 38.0)
-            y = 0.48 + (y_raw / 38.0)
+            y = 0.52 - (y_raw / 38.0) # Upright on canvas
             pts = np.stack([np.clip(x, 0.02, 0.98), np.clip(y, 0.02, 0.98)], axis=-1)
             
         elif shape_type == "double_rings":
@@ -273,7 +271,7 @@ class UniversalBackpropMorpher:
 
     def morph(self, source_points, target_points, 
               num_steps: int = 80, capture_interval: int = 2,
-              repulsion_weight: float = 0.15) -> dict:
+              repulsion_weight: float = 0.15, **kwargs) -> dict:
         """
         Morphs source_points into target_points via Autograd Backpropagation & Optimal Transport.
         Supports dense trajectory capture, live 2D/1D Fourier spectral generation, and anti-collision.
@@ -527,35 +525,48 @@ def plot_universal_morphing_trajectory(results: dict, save_path: str = "universa
     Generates publication-quality multi-panel visualization of the backpropagation morphing process.
     Supports 2D projections and 3D manifolds.
     """
-    traj = results['trajectory']
+    traj_raw = results.get('evolution_stages') or results.get('trajectory', [])
+    if not traj_raw:
+        return
+        
+    sample_frames = []
+    if isinstance(traj_raw[0], dict):
+        indices = np.linspace(0, len(traj_raw) - 1, min(5, len(traj_raw)), dtype=int)
+        for i in indices:
+            sample_frames.append((traj_raw[i]['step'], np.asarray(traj_raw[i]['points'])))
+    else:
+        sample_frames = traj_raw
+
+    tgt = np.asarray(results['target_points'])
     dim = results.get('dimension', 2)
+    total_frames = len(sample_frames)
     
     if dim == 3:
-        fig = plt.figure(figsize=(3.8 * (len(traj) + 1), 4.5), dpi=150)
-        for idx, (step, pts) in enumerate(traj):
-            ax = fig.add_subplot(1, len(traj) + 1, idx + 1, projection='3d')
-            progress_pct = int((step / (traj[-1][0] if traj[-1][0] > 0 else 1)) * 100)
+        fig = plt.figure(figsize=(3.8 * (total_frames + 1), 4.5), dpi=150)
+        for idx, (step, pts) in enumerate(sample_frames):
+            ax = fig.add_subplot(1, total_frames + 1, idx + 1, projection='3d')
+            max_step = sample_frames[-1][0] if sample_frames[-1][0] > 0 else 1
+            progress_pct = int((step / max_step) * 100)
             ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], s=10, color='#1f77b4', alpha=0.7)
             ax.set_title(f"Step {step} ({progress_pct}%)", fontsize=10, fontweight='bold')
             ax.view_init(elev=25, azim=45)
             
-        ax_tgt = fig.add_subplot(1, len(traj) + 1, len(traj) + 1, projection='3d')
-        tgt = results['target_points']
+        ax_tgt = fig.add_subplot(1, total_frames + 1, total_frames + 1, projection='3d')
         ax_tgt.scatter(tgt[:, 0], tgt[:, 1], tgt[:, 2], s=10, color='#d62728', alpha=0.7)
         ax_tgt.set_title(f"Target ({shape_name})", fontsize=10, fontweight='bold', color='#d62728')
         ax_tgt.view_init(elev=25, azim=45)
     else:
-        fig, axes = plt.subplots(1, len(traj) + 1, figsize=(3.8 * (len(traj) + 1), 4.2), dpi=150)
-        for idx, (step, pts) in enumerate(traj):
+        fig, axes = plt.subplots(1, total_frames + 1, figsize=(3.8 * (total_frames + 1), 4.2), dpi=150)
+        for idx, (step, pts) in enumerate(sample_frames):
             ax = axes[idx]
-            progress_pct = int((step / (traj[-1][0] if traj[-1][0] > 0 else 1)) * 100)
+            max_step = sample_frames[-1][0] if sample_frames[-1][0] > 0 else 1
+            progress_pct = int((step / max_step) * 100)
             ax.scatter(pts[:, 0], pts[:, 1], s=12, color='#1f77b4', edgecolors='none', alpha=0.85)
             ax.set_aspect('equal', adjustable='datalim')
             ax.set_title(f"Step {step}\n({progress_pct}% Progress)", fontsize=11, fontweight='bold')
             ax.grid(True, alpha=0.25, linestyle='--')
             
         ax_target = axes[-1]
-        tgt = results['target_points']
         ax_target.scatter(tgt[:, 0], tgt[:, 1], s=12, color='#d62728', edgecolors='none', alpha=0.85)
         ax_target.set_aspect('equal', adjustable='datalim')
         ax_target.set_title(f"Target Geometry\n({shape_name.capitalize()})", fontsize=11, fontweight='bold', color='#d62728')

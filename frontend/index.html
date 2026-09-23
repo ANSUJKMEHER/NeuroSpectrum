@@ -864,7 +864,7 @@
 
                         <!-- Viewport Display Modes -->
                         <div class="flex items-center space-x-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
-                            <button id="univ-view-ghost" onclick="toggleUnivGhost()" class="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold shadow-xs transition-all cursor-pointer">Target Ghost</button>
+                            <button id="univ-view-ghost" onclick="toggleUnivGhost()" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Target Ghost</button>
                             <button id="univ-view-vectors" onclick="toggleUnivVectors()" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Vectors</button>
                             <button id="univ-view-mesh" onclick="toggleUnivMesh()" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer">Lattice</button>
                         </div>
@@ -3175,7 +3175,7 @@
             targetGamma: 1.0,
             targetPoints: null,
 
-            showGhost: true,
+            showGhost: false,
             showVectors: false,
             showMesh: false,
 
@@ -3868,16 +3868,19 @@
 
             const pts = getUnivPointsAtStep();
 
-            // 1. Draw Target Silhouette Ghost
+            // 1. Draw Target Silhouette Ghost (if toggled on by user)
             if (univState.showGhost && univState.targetPoints && univState.targetPoints.length > 0) {
                 ctx.save();
-                ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
+                ctx.strokeStyle = 'rgba(168, 85, 247, 0.40)';
+                ctx.fillStyle = 'rgba(168, 85, 247, 0.12)';
+                ctx.lineWidth = 0.8;
                 const tpts = univState.targetPoints;
                 for (let i = 0; i < tpts.length; i++) {
                     const tx = tpts[i][0] * w;
                     const ty = tpts[i][1] * h;
                     ctx.beginPath();
-                    ctx.arc(tx, ty, 3.0, 0, Math.PI * 2);
+                    ctx.arc(tx, ty, 2.2, 0, Math.PI * 2);
+                    ctx.stroke();
                     ctx.fill();
                 }
                 ctx.restore();

@@ -100,8 +100,9 @@ class DifferentiableSpectralAnalyzer(nn.Module):
         if self.deconvolve_gaussian:
             # Divide by Gaussian blur power spectrum to recover true point-distribution PSD
             gauss_filter = self.gaussian_filter_psd.to(dtype=psd_2d.dtype, device=psd_2d.device)
-            # Add numerical stabilizer to prevent division by near-zero at ultra-high frequencies
-            radial_psd = radial_psd / (gauss_filter.unsqueeze(0) + 1e-12)
+            # Add numerical stabilizer & clamp gain to prevent division by near-zero at ultra-high frequencies (EC-I4)
+            deconv_gain = torch.clamp(1.0 / (gauss_filter.unsqueeze(0) + 1e-12), max=100.0)
+            radial_psd = radial_psd * deconv_gain
             
         if is_unbatched:
             radial_psd = radial_psd.squeeze(0)
