@@ -183,15 +183,6 @@ class DifferentiableSimulationEngine(nn.Module):
         )
         return step_euler(points, forces, dt=self.dt, L=self.L)
 
-    def _single_step_verlet(self, points: torch.Tensor, velocities: torch.Tensor, forces: torch.Tensor, gamma: torch.Tensor, is_inference: bool = False) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Velocity Verlet step for gradient checkpointing."""
-        return step_velocity_verlet(
-            points, velocities, forces, gamma, self.energy_model,
-            dt=self.dt, L=self.L, damping=self.damping,
-            use_knn=self.use_knn, k=self.k, is_inference=is_inference,
-            langevin_noise=self.langevin_noise
-        )
-
     def forward(self, points_init: torch.Tensor, gamma: torch.Tensor) -> torch.Tensor:
         """
         Simulate particle dynamics for num_steps.
@@ -250,18 +241,20 @@ class DifferentiableSimulationEngine(nn.Module):
             active_steps = self.num_steps
 
         # Active unrolled steps
-        if self.integrator == "verlet":
+        if self.integrator == "verlet" and not points.requires_grad:
+            # Inference mode: fast non-differentiable Velocity Verlet with inertia & energy conservation
             velocities = torch.zeros_like(points)
-            is_infer = not points.requires_grad
             forces, _ = compute_neural_force(
                 points, gamma, self.energy_model, L=self.L,
-                use_knn=self.use_knn, k=self.k, is_inference=is_infer
+                use_knn=self.use_knn, k=self.k, is_inference=True
             )
             for step in range(active_steps):
-                if self.use_checkpointing and points.requires_grad:
-                    points, velocities, forces, _ = checkpoint(self._single_step_verlet, points, velocities, forces, gamma, use_reentrant=False)
-                else:
-                    points, velocities, forces, _ = self._single_step_verlet(points, velocities, forces, gamma, is_infer)
+                points, velocities, forces, _ = step_velocity_verlet(
+                    points, velocities, forces, gamma, self.energy_model,
+                    dt=self.dt, L=self.L, damping=self.damping,
+                    use_knn=self.use_knn, k=self.k, is_inference=True,
+                    langevin_noise=self.langevin_noise
+                )
         else:
             # Training mode: gradient-checkpointed 1st-order simulation for O(1) memory and numerical stability
             for step in range(active_steps):

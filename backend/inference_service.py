@@ -172,7 +172,8 @@ class InferenceService:
         capture_interval: int = 2,
         lr: float = 0.04,
         repulsion_weight: float = 0.25,
-        target_spacing: Optional[float] = None
+        target_spacing: Optional[float] = None,
+        n_particles: int = 256
     ) -> Dict[str, Any]:
         """
         Runs universal any-to-any point morphing via Optimal Transport and Backpropagation
@@ -185,15 +186,15 @@ class InferenceService:
         if isinstance(source_points, str):
             src_str = source_points.lower()
             if src_str in ["spiral", "star", "heart", "butterfly", "infinity", "gear", "flower", "yinyang", "rings", "double_rings"]:
-                src_pts = TargetGeometryFactory.create_target(src_str, n_points=256)
+                src_pts = TargetGeometryFactory.create_target(src_str, n_points=n_particles)
             elif src_str == "grid":
                 import data
-                src_pts = data.generate_regular_grid(1, 256)[0].numpy()
+                src_pts = data.generate_regular_grid(1, n_particles)[0].numpy()
             elif src_str == "jittered":
                 import data
-                src_pts = data.generate_jittered_grid(1, 256)[0].numpy()
+                src_pts = data.generate_jittered_grid(1, n_particles)[0].numpy()
             else:
-                src_pts = np.random.uniform(0.05, 0.95, size=(256, 2)).astype(np.float32)
+                src_pts = np.random.uniform(0.05, 0.95, size=(n_particles, 2)).astype(np.float32)
         elif isinstance(source_points, dict) and "points" in source_points:
             raw_pts = source_points["points"]
             if len(raw_pts) > 1:

@@ -53,7 +53,7 @@ def run_baseline_benchmark(ckpt_path: str = "outputs/checkpoints/checkpoint_cont
     neural_model = NeuralPairwiseEnergy(
         hidden_dim=64, 
         num_layers=3, 
-        use_divergence_prior=True, 
+        use_divergence_prior=False, 
         eps_divergence=0.005, 
         r_repulsion=0.045
     ).to(device)

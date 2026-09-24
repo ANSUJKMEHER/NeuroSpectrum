@@ -31,7 +31,6 @@ from generalize import (
     run_unseen_gamma_interpolation_benchmark,
     run_amortized_cost_comparison
 )
-from figure2_benchmark import generate_figure2_benchmark, generate_figure2_image_bytes
 
 from training_service import TrainingService
 from inference_service import InferenceService
@@ -106,6 +105,7 @@ class UniversalMorphRequest(BaseModel):
     lr: float = 0.04
     repulsion_weight: float = 0.25
     target_spacing: Optional[float] = None
+    n_particles: int = 256
 
 
 class CustomPointsUploadRequest(BaseModel):
@@ -404,22 +404,6 @@ def get_amortized_cost_benchmark():
     return {"comparison": res}
 
 
-# --- Figure 2 Multi-Method Benchmark (EGSR 2026 Paper Comparison) ---
-@app.get("/api/benchmark/figure2")
-def get_figure2_benchmark(refresh: bool = False):
-    if inference_service.engine is None:
-        raise HTTPException(status_code=400, detail="Inference engine not loaded")
-    return generate_figure2_benchmark(inference_service.engine, n_particles=256, force_refresh=refresh)
-
-
-@app.get("/api/benchmark/figure2/image")
-def get_figure2_image(refresh: bool = False):
-    if inference_service.engine is None:
-        raise HTTPException(status_code=400, detail="Inference engine not loaded")
-    bench_data = generate_figure2_benchmark(inference_service.engine, n_particles=256, force_refresh=refresh)
-    img_bytes = generate_figure2_image_bytes(bench_data)
-    return Response(content=img_bytes, media_type="image/png")
-
 
 # --- Universal "Any Input -> Any Output" Synthesis Endpoints ---
 @app.post("/api/universal/target-preview")
@@ -449,7 +433,8 @@ def universal_morph(req: UniversalMorphRequest):
             capture_interval=req.capture_interval,
             lr=req.lr,
             repulsion_weight=req.repulsion_weight,
-            target_spacing=req.target_spacing
+            target_spacing=req.target_spacing,
+            n_particles=req.n_particles
         )
         return res
     except Exception as e:

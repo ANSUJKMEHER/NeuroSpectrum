@@ -61,7 +61,7 @@ def train_single_target_overfit(target_gamma_val: float = 1.0,
     energy_model = NeuralPairwiseEnergy(
         hidden_dim=64, 
         num_layers=3,
-        use_divergence_prior=True,
+        use_divergence_prior=False,
         eps_divergence=eps_divergence,
         r_repulsion=r_repulsion
     ).to(device)
@@ -167,7 +167,7 @@ def train_single_target_overfit(target_gamma_val: float = 1.0,
     
     # Ensure output directories exist at project root
     import os
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    project_root = '.'
     fig_dir = os.path.join(project_root, "outputs", "figures")
     ckpt_dir = os.path.join(project_root, "outputs", "checkpoints")
     os.makedirs(fig_dir, exist_ok=True)
@@ -231,7 +231,7 @@ def train_continuous_gamma(num_epochs: int = 80,
     energy_model = NeuralPairwiseEnergy(
         hidden_dim=64, 
         num_layers=3,
-        use_divergence_prior=True,
+        use_divergence_prior=False,
         eps_divergence=eps_divergence,
         r_repulsion=r_repulsion
     ).to(device)
@@ -318,7 +318,7 @@ def train_continuous_gamma(num_epochs: int = 80,
     
     # Save artifacts
     import os
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    project_root = '.'
     ckpt_dir = os.path.join(project_root, "outputs", "checkpoints")
     os.makedirs(ckpt_dir, exist_ok=True)
     
@@ -334,7 +334,7 @@ def train_continuous_gamma(num_epochs: int = 80,
     )
     print(f"Saved continuous model checkpoint to {ckpt_path}", flush=True)
     
-    canonical_path = os.path.join(project_root, "neurospectrum_model.pt")
+    canonical_path = os.path.join(project_root, "neurospectrum_model_v2.pt")
     save_canonical_model(
         model=energy_model,
         save_path=canonical_path,
@@ -367,7 +367,7 @@ class StatefulTrainingSession:
         weight_decay: float = 1e-5,
         hidden_dim: int = 64,
         num_layers: int = 3,
-        use_divergence_prior: bool = True,
+        use_divergence_prior: bool = False,
         eps_divergence: float = 0.005,
         r_repulsion: float = 0.045,
         n_particles: int = 256,
@@ -569,7 +569,7 @@ class StatefulTrainingSession:
                 if k in ckpt_data["history"]:
                     self.history[k] = list(ckpt_data["history"][k])
 
-    def export_canonical_model(self, filepath: str = "neurospectrum_model.pt") -> str:
+    def export_canonical_model(self, filepath: str = "neurospectrum_model_v2.pt") -> str:
         """Exports the frozen research-grade production model."""
         loss_list = self.history.get("loss", [])
         return self.save_canonical_fn(
@@ -585,7 +585,7 @@ class StatefulTrainingSession:
 
 
 if __name__ == "__main__":
-    train_continuous_gamma(num_epochs=80, batch_size=4)
+    train_continuous_gamma(num_epochs=200, batch_size=4)
 
 def probe_model(energy_model, target_gammas, n_particles: int = 128, num_steps: int = 30, dt: float = 0.02):
     sim = DifferentiableSimulationEngine(energy_model, dt=dt, num_steps=num_steps)

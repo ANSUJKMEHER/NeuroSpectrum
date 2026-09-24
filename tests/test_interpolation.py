@@ -7,7 +7,14 @@ Generates publication-quality 5-column multi-spectral visualization.
 
 import os
 import sys
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
 
 import torch
 import numpy as np

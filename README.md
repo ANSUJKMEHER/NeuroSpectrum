@@ -103,11 +103,13 @@ python tests/test_graphics_applications.py
 ## 📊 Benchmark Scorecards
 
 ### 1. Classical Baseline Comparison (Phase 10)
-| Method | Wall-Clock Time (ms) | Target $\gamma^*$ | Measured $\hat{\gamma}$ | MAE |
+| Method | Wall-Clock Time | Target $\gamma^*$ | Measured $\hat{\gamma}$ | MAE |
 | :--- | :---: | :---: | :---: | :---: |
-| **Classical Adam (Per-Target)** | $73.2\text{ ms}$ | $+1.00$ | $+1.14$ | $0.140$ |
-| **NeuroSpectrum (Neural Forward)** | **$30.1\text{ ms}$** | $+1.00$ | **$+1.06$** | **$0.060$** |
-| **Speedup Factor** | **$2.4\times$ Faster** | — | — | **$2.3\times$ More Accurate** |
+| **Classical Adam (Per-Target)** | $2.329\text{ s}$ | $+0.00$ | $+0.03$ | $\mathbf{0.032}$ |
+| **NeuroSpectrum (Neural Forward)** | $\mathbf{1.093\text{ s}}$ | $+0.00$ | $+0.17$ | $0.175$ |
+| **Speedup Factor** | **$2.1\times$ Faster** | - | - | Trades precision for speed |
+
+*Note: The neural model offers an amortized inference speedup over iterative classical optimization. It smoothly interpolates across intermediate spectral targets, though it exhibits higher absolute slope errors (MAE) at the extreme boundaries ($\gamma = \pm 1.5$) compared to solving each target from scratch.*
 
 ### 2. $O(Nk)$ Scalability Benchmark (Phase 12)
 | Particle Count $N$ | All-Pairs $O(N^2)$ Runtime | Local $k$-NN $O(Nk)$ Runtime | Speedup Multiplier |

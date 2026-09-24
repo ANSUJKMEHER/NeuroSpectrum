@@ -209,10 +209,6 @@
                 <span>📊</span>
                 <span>Spectral Analytics</span>
             </button>
-            <button id="tab-btn-figure2" onclick="switchTab('figure2')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer">
-                <span>📄</span>
-                <span>Figure 2 Benchmark</span>
-            </button>
             <button id="tab-btn-benchmarks" onclick="switchTab('benchmarks')" class="px-3.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center space-x-1.5 cursor-pointer">
                 <span>🧪</span>
                 <span>Generalization Benchmarks</span>
@@ -611,12 +607,12 @@
                     </div>
                 </div>
 
-                <!-- Live Spectral Signatures (EGSR 2026 Figure 2 Rows 2 & 3) -->
+                <!-- Live Spectral Signatures (2D & 1D Radial Spectrum) -->
                 <div class="surface-card p-4 space-y-3">
                     <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                         <div class="flex items-center space-x-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                            <span class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Live Spectral Verification (EGSR 2026 Figure 2 Rows 2 & 3)</span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Live Spectral Verification (2D & 1D Radial Spectrum)</span>
                         </div>
                         <span class="text-[11px] font-mono text-slate-400">Live synced with simulation video frame</span>
                     </div>
@@ -659,13 +655,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Quick link to Figure 2 Benchmark -->
-                    <button onclick="switchTab('figure2')" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold text-xs shadow-sm transition-all flex items-center justify-center space-x-2 cursor-pointer">
-                        <span>📄</span>
-                        <span>View EGSR 2026 Figure 2 Multi-Method Comparison (Input, CMJ, CCVT, Curl PN, Phasor GP, PDS)</span>
-                        <span>→</span>
-                    </button>
                 </div>
 
             </div>
@@ -1263,89 +1252,6 @@
     </section>
 
     <!-- ===================================================================== -->
-    <!-- TAB: FIGURE 2 PUBLISHED PAPER BENCHMARK (EGSR 2026) -->
-    <!-- ===================================================================== -->
-    <section id="tab-figure2" class="hidden relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-6 py-5 space-y-6">
-        <!-- Header & Action Card -->
-        <div class="surface-card p-5 space-y-3">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                    <div class="flex items-center space-x-2">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">EGSR 2026 PAPER REPRODUCTION</span>
-                        <h2 class="text-base font-bold text-slate-900 dark:text-white">Figure 2: Multi-Method Blue-Noise Synthesis from Archimedean Spiral Input</h2>
-                    </div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Side-by-side benchmark from <em>"A Dynamical System for Spectral Noise Synthesis"</em> (Eurographics Symposium on Rendering 2026, V. Bojja & J. Padrón-Griffe).
-                        Top Row: Point Distribution · Middle Row: 2D Fourier Power Spectrum · Bottom Row: 1D Radial Power Spectrum.
-                    </p>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-mono border border-slate-200 dark:border-slate-700">
-                        <button id="btn-fig2-paper" onclick="setFigure2Mode('paper')" class="px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 font-bold shadow-xs text-slate-800 dark:text-white cursor-pointer" title="Exact Figure 2 & Table 2 reproduction from the published paper">
-                            📄 Paper Baseline (Spiral N=256)
-                        </button>
-                        <button id="btn-fig2-live" onclick="setFigure2Mode('live')" class="px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer" title="Compare against your active live simulation run from the Simulation tab">
-                            ⚡ Compare My Active Simulation
-                        </button>
-                    </div>
-                    <button onclick="loadFigure2Benchmark(true)" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center space-x-1 cursor-pointer">
-                        <span>🔄</span>
-                        <span>Recompute</span>
-                    </button>
-                    <a href="/api/benchmark/figure2/image" download="figure2_published_comparison.png" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-sm cursor-pointer transition-all">
-                        <span>📸</span>
-                        <span>Download Figure 2 (PNG)</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- 6 Columns Grid Container (Rendered dynamically via loadFigure2Benchmark) -->
-        <div class="surface-card p-5 space-y-4">
-            <div class="flex items-center justify-between text-xs font-mono text-slate-400 border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
-                <span>ROW 1: Point Distribution · ROW 2: 2D Fourier Power Spectrum |F(k)|² · ROW 3: Radial Power Spectrum P(k)</span>
-                <span>N = 256 Particles</span>
-            </div>
-            <div id="figure2-columns-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <!-- Populated by JS -->
-            </div>
-        </div>
-
-        <!-- Table 2: Quantitative Quality Metrics Card -->
-        <div class="surface-card p-5 space-y-3">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Table 2: Comparative Metric Evaluation across Sampling Techniques</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Mean spacing (d_mean), Anisotropy (a_hat), Discrepancy (v_D), Nyquist frequency (f_N), Quality (Q), Voronoi cell regularity (CV), and execution time.</p>
-                </div>
-                <div class="flex items-center space-x-2 text-[10px] font-mono">
-                    <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/30">Top Performer (1st)</span>
-                    <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/30">Runner Up (2nd)</span>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs text-left border-collapse font-mono">
-                    <thead>
-                        <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-                            <th class="py-2.5 px-3">Method</th>
-                            <th class="py-2.5 px-3">d_mean ↑</th>
-                            <th class="py-2.5 px-3">a_hat ↓</th>
-                            <th class="py-2.5 px-3">v_D ↓</th>
-                            <th class="py-2.5 px-3">f_N ↑</th>
-                            <th class="py-2.5 px-3">Quality Q ↑</th>
-                            <th class="py-2.5 px-3">Voronoi CV ↓</th>
-                            <th class="py-2.5 px-3">Time (s) ↓</th>
-                        </tr>
-                    </thead>
-                    <tbody id="figure2-table-body">
-                        <!-- Populated by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===================================================================== -->
     <!-- TAB 3: GENERALIZATION BENCHMARKS -->
     <!-- ===================================================================== -->
     <section id="tab-benchmarks" class="hidden relative z-10 flex-1 max-w-[1550px] w-full mx-auto px-6 py-5 space-y-6">
@@ -1609,7 +1515,7 @@
         // --- TAB SWITCHING ---
         function switchTab(tab) {
             appState.activeTab = tab;
-            ['sim', 'universal', 'analytics', 'figure2', 'benchmarks', 'train'].forEach(t => {
+            ['sim', 'universal', 'analytics', 'benchmarks', 'train'].forEach(t => {
                 const el = document.getElementById('tab-' + t);
                 const btn = document.getElementById('tab-btn-' + t);
                 if (!el || !btn) return;
@@ -1631,12 +1537,7 @@
                     initPsdChart();
                     fetchPhysicsCurves();
                     if (appState.simData) updatePsdChart(appState.simData);
-                }, 100);
-            } else if (tab === 'figure2') {
-                setTimeout(() => {
-                    loadFigure2Benchmark();
-                }, 100);
-            } else if (tab === 'train') {
+                }, 100);} else if (tab === 'train') {
                 setTimeout(() => {
                     initLossChart();
                     fetchTrainingStatus();
@@ -3638,261 +3539,6 @@
             setTimeout(() => URL.revokeObjectURL(url), 2000);
         }
 
-        // --- FIGURE 2 BENCHMARK CONTROLLER (EGSR 2026 PAPER REPRODUCTION) ---
-        async function loadFigure2Benchmark(forceRefresh = false) {
-            const container = document.getElementById('figure2-columns-container');
-            const tbody = document.getElementById('figure2-table-body');
-            if (!container) return;
-
-            if (appState.figure2Data && !forceRefresh) {
-                renderFigure2UI(appState.figure2Data);
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="col-span-full py-12 flex flex-col items-center justify-center space-y-3 font-mono text-xs text-slate-400">
-                    <span class="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></span>
-                    <span>Computing multi-method blue-noise synthesis (Archimedean spiral → CMJ, CCVT, Curl PN, Phasor GP, PDS)...</span>
-                </div>
-            `;
-
-            try {
-                const resp = await fetch(`/api/benchmark/figure2${forceRefresh ? '?refresh=true' : ''}`);
-                if (!resp.ok) throw new Error("API benchmark request failed");
-                const data = await resp.json();
-                appState.figure2Data = data;
-                renderFigure2UI(data);
-            } catch (err) {
-                container.innerHTML = `
-                    <div class="col-span-full p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-mono text-center dark:bg-rose-950 dark:border-rose-800 dark:text-rose-300">
-                        Failed to compute Figure 2 benchmark: ${err.message}
-                    </div>
-                `;
-            }
-        }
-
-        function setFigure2Mode(mode) {
-            appState.figure2Mode = mode;
-            const btnPaper = document.getElementById('btn-fig2-paper');
-            const btnLive = document.getElementById('btn-fig2-live');
-
-            if (mode === 'live') {
-                if (!appState.simData || !appState.simData.trajectory || appState.simData.trajectory.length === 0) {
-                    alert('Please run or preview a simulation first in the Simulation tab to compare your live run here!');
-                    return;
-                }
-                if (btnPaper) {
-                    btnPaper.className = 'px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer';
-                }
-                if (btnLive) {
-                    btnLive.className = 'px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 font-bold shadow-xs text-indigo-600 dark:text-indigo-400 cursor-pointer';
-                }
-
-                if (!appState.figure2Data) {
-                    loadFigure2Benchmark().then(() => setFigure2Mode('live'));
-                    return;
-                }
-
-                // Deep copy benchmark data and splice in live simulation
-                const liveData = JSON.parse(JSON.stringify(appState.figure2Data));
-                const traj = appState.simData.trajectory;
-                const firstStep = traj[0];
-                const lastStep = traj[traj.length - 1];
-
-                // Method 0: Active input geometry
-                if (firstStep && liveData.methods[0]) {
-                    liveData.methods[0].label = `Input (${appState.initialDistribution.toUpperCase()})`;
-                    liveData.methods[0].points = firstStep.points;
-                    if (firstStep.psd_2d) liveData.methods[0].psd_2d = firstStep.psd_2d;
-                    if (firstStep.radial_psd) liveData.methods[0].radial_psd = firstStep.radial_psd;
-                }
-
-                // Method 4: Active simulation final state
-                if (lastStep && liveData.methods[4]) {
-                    const gVal = appState.targetGamma;
-                    liveData.methods[4].label = `Ours (γ=${gVal >= 0 ? '+' : ''}${gVal.toFixed(1)})`;
-                    liveData.methods[4].points = lastStep.points;
-                    if (lastStep.psd_2d) liveData.methods[4].psd_2d = lastStep.psd_2d;
-                    if (lastStep.radial_psd) liveData.methods[4].radial_psd = lastStep.radial_psd;
-                    if (appState.simData.results && liveData.methods[4].metrics) {
-                        const r = appState.simData.results;
-                        if (r.min_spacing) liveData.methods[4].metrics.d_mean = r.min_spacing * 1.6;
-                        if (r.cv_nnd) liveData.methods[4].metrics.cv_voronoi = r.cv_nnd;
-                    }
-                }
-
-                renderFigure2UI(liveData);
-
-            } else {
-                if (btnPaper) {
-                    btnPaper.className = 'px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 font-bold shadow-xs text-slate-800 dark:text-white cursor-pointer';
-                }
-                if (btnLive) {
-                    btnLive.className = 'px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer';
-                }
-                if (appState.figure2Data) {
-                    renderFigure2UI(appState.figure2Data);
-                } else {
-                    loadFigure2Benchmark();
-                }
-            }
-        }
-
-        function renderFigure2UI(data) {
-            const container = document.getElementById('figure2-columns-container');
-            const tbody = document.getElementById('figure2-table-body');
-            if (!container || !data || !data.methods) return;
-
-            container.innerHTML = '';
-            if (tbody) tbody.innerHTML = '';
-
-            const isDark = document.documentElement.classList.contains('dark');
-            const chartGridColor = isDark ? 'rgba(51, 65, 85, 0.4)' : 'rgba(226, 232, 240, 0.8)';
-
-            data.methods.forEach((m, colIdx) => {
-                const colCard = document.createElement('div');
-                colCard.className = 'p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col space-y-3';
-
-                colCard.innerHTML = `
-                    <div class="text-center pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
-                        <span class="text-xs font-bold text-slate-800 dark:text-white block truncate">${m.label}</span>
-                        <span class="text-[9px] font-mono text-slate-400 block">${m.id === 'neurospectrum_ours' ? 'Ours (EGSR 2026)' : (m.id === 'input_spiral' ? 'Input Topology' : 'Baseline')}</span>
-                    </div>
-
-                    <!-- Row 1: Point Distribution -->
-                    <div class="flex flex-col items-center">
-                        <span class="text-[9px] font-mono text-slate-400 mb-1">Point Set (Row 1)</span>
-                        <div class="w-full aspect-square rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 overflow-hidden shadow-xs flex items-center justify-center">
-                            <canvas id="fig2-canvas-pts-${colIdx}" width="180" height="180" class="w-full h-full block"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Row 2: 2D Power Spectrum -->
-                    <div class="flex flex-col items-center">
-                        <span class="text-[9px] font-mono text-slate-400 mb-1">2D Spectrum |F(k)|² (Row 2)</span>
-                        <div class="w-full aspect-square rounded-xl bg-black border border-slate-300 dark:border-slate-700 overflow-hidden shadow-xs flex items-center justify-center relative">
-                            <canvas id="fig2-canvas-psd-${colIdx}" width="64" height="64" class="w-full h-full image-render-pixelated block"></canvas>
-                            <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
-                                <div class="w-full h-[1px] bg-red-400"></div>
-                            </div>
-                            <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
-                                <div class="h-full w-[1px] bg-red-400"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Row 3: Radial Power Spectrum Curve -->
-                    <div class="flex flex-col">
-                        <span class="text-[9px] font-mono text-slate-400 mb-1 text-center">Radial Spectrum P(k) (Row 3)</span>
-                        <div class="w-full h-28 relative">
-                            <canvas id="fig2-chart-rad-${colIdx}"></canvas>
-                        </div>
-                    </div>
-                `;
-
-                container.appendChild(colCard);
-
-                // Render Canvas Row 1 (Points)
-                setTimeout(() => {
-                    const ptsCanvas = document.getElementById(`fig2-canvas-pts-${colIdx}`);
-                    if (ptsCanvas && m.points) {
-                        const ctx = ptsCanvas.getContext('2d');
-                        ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
-                        ctx.fillRect(0, 0, 180, 180);
-                        ctx.fillStyle = '#0066cc';
-                        for (let p of m.points) {
-                            ctx.beginPath();
-                            ctx.arc(p[0] * 180, p[1] * 180, 1.8, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                    }
-
-                    // Render Canvas Row 2 (2D PSD)
-                    const psdCanvas = document.getElementById(`fig2-canvas-psd-${colIdx}`);
-                    if (psdCanvas && m.psd_2d) {
-                        const ctx = psdCanvas.getContext('2d');
-                        const dim = m.psd_2d.length;
-                        const img = ctx.createImageData(dim, dim);
-                        let maxVal = 0;
-                        for (let r = 0; r < dim; r++) {
-                            for (let c = 0; c < dim; c++) {
-                                if (r !== dim/2 || c !== dim/2) {
-                                    if (m.psd_2d[r][c] > maxVal) maxVal = m.psd_2d[r][c];
-                                }
-                            }
-                        }
-                        for (let r = 0; r < dim; r++) {
-                            for (let c = 0; c < dim; c++) {
-                                const idx = (r * dim + c) * 4;
-                                const norm = Math.min(1.0, m.psd_2d[r][c] / (maxVal * 0.75 + 1e-6));
-                                const gray = Math.round(norm * 255);
-                                img.data[idx] = gray;
-                                img.data[idx + 1] = gray;
-                                img.data[idx + 2] = gray;
-                                img.data[idx + 3] = 255;
-                            }
-                        }
-                        ctx.putImageData(img, 0, 0);
-                    }
-
-                    // Render Canvas Row 3 (1D Radial Spectrum)
-                    const radCanvas = document.getElementById(`fig2-chart-rad-${colIdx}`);
-                    if (radCanvas && m.radial_psd) {
-                        new Chart(radCanvas.getContext('2d'), {
-                            type: 'line',
-                            data: {
-                                labels: Array.from({length: m.radial_psd.length}, (_, i) => i + 1),
-                                datasets: [{
-                                    data: m.radial_psd,
-                                    borderColor: '#0044cc',
-                                    borderWidth: 1.5,
-                                    pointRadius: 0,
-                                    fill: false,
-                                    tension: 0.35
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                animation: false,
-                                plugins: { legend: { display: false } },
-                                scales: {
-                                    x: { display: false },
-                                    y: {
-                                        min: 0,
-                                        max: m.id === 'input_spiral' ? Math.max(...m.radial_psd) * 1.05 : 2.5,
-                                        ticks: { display: false },
-                                        grid: { color: chartGridColor }
-                                    }
-                                }
-                            }
-                        });
-                    }
-                }, 50);
-
-                // Add Row to Table 2
-                if (tbody && m.metrics) {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
-                    const met = m.metrics;
-                    const isOurs = m.id === 'neurospectrum_ours';
-
-                    tr.innerHTML = `
-                        <td class="py-2 px-3 font-bold ${isOurs ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-200'}">
-                            ${m.label} ${isOurs ? '★' : ''}
-                        </td>
-                        <td class="py-2 px-3 font-mono">${met.d_mean.toFixed(4)}</td>
-                        <td class="py-2 px-3 font-mono ${met.a_hat < 1.0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : ''}">${met.a_hat.toFixed(4)}</td>
-                        <td class="py-2 px-3 font-mono">${met.v_D.toFixed(4)}</td>
-                        <td class="py-2 px-3 font-mono">${met.f_N.toFixed(2)}</td>
-                        <td class="py-2 px-3 font-mono ${met.Q > 13 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''}">${met.Q.toFixed(2)}</td>
-                        <td class="py-2 px-3 font-mono ${met.cv_voronoi < 0.15 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : ''}">${met.cv_voronoi.toFixed(4)}</td>
-                        <td class="py-2 px-3 font-mono">${met.runtime_sec.toFixed(3)}s</td>
-                    `;
-                    tbody.appendChild(tr);
-                }
-            });
-        }
 
         // --- HOVER TOOLTIP ---
         const simCanvasEl = document.getElementById('sim-canvas');
@@ -5336,6 +4982,7 @@
 
                 const payload = {
                     source_points: srcPts,
+                    n_particles: univState.nParticles,
                     target_spec: {
                         type: univState.targetMode,
                         text: univState.targetText || 'NEURO',
