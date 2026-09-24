@@ -107,6 +107,7 @@ class UniversalMorphRequest(BaseModel):
     repulsion_weight: float = 0.25
     target_spacing: Optional[float] = None
     n_particles: int = 256
+    spectral_weight: Optional[float] = 0.15
     adaptive_mode: Optional[str] = "none"
     zone_params: Optional[Dict[str, Any]] = None
 
@@ -439,6 +440,7 @@ def universal_morph(req: UniversalMorphRequest):
             repulsion_weight=req.repulsion_weight,
             target_spacing=req.target_spacing,
             n_particles=req.n_particles,
+            spectral_weight=req.spectral_weight if req.spectral_weight is not None else 0.15,
             adaptive_mode=req.adaptive_mode,
             zone_params=req.zone_params
         )

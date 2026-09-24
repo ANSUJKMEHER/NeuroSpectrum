@@ -471,6 +471,24 @@ class UniversalBackpropMorpher:
         self.repulsion_weight = repulsion_weight
         self.target_spacing = target_spacing
 
+        # Direct coupling to Professor's Trained Neural Pairwise Potential
+        self.neural_energy = None
+        try:
+            from energy import NeuralPairwiseEnergy
+            import os
+            chk_path = "outputs/checkpoints/checkpoint_continuous_gamma.pt"
+            if not os.path.exists(chk_path):
+                chk_path = "neurospectrum_model.pt"
+            if os.path.exists(chk_path):
+                net = NeuralPairwiseEnergy()
+                ckpt = torch.load(chk_path, map_location="cpu")
+                state = ckpt.get("model_state_dict", ckpt)
+                net.load_state_dict(state, strict=False)
+                net.eval()
+                self.neural_energy = net
+        except Exception:
+            self.neural_energy = None
+
     def _normalize(self, pts: np.ndarray):
         """Bounding-box normalization to [0.05, 0.95]."""
         p_min = pts.min(axis=0)
@@ -624,6 +642,14 @@ class UniversalBackpropMorpher:
                 loss = l_ot + 0.6 * l_cd
             else:
                 loss = l_cd
+
+            # Professor's Neural Pairwise Interaction Potential Coupling
+            spectral_weight = float(kwargs.get('spectral_weight', 0.15))
+            if spectral_weight > 0 and self.neural_energy is not None and N > 1:
+                target_gamma = float(kwargs.get('target_gamma', 1.0))
+                g_tensor = torch.tensor([target_gamma], device=device)
+                e_neural = self.neural_energy.compute_total_energy(X, g_tensor)
+                loss = loss + (spectral_weight * 0.03) * e_neural.mean()
                 
             # Inter-particle anti-collision & localized adaptive multi-zone spatial barrier
             r_loc, noise_loc = get_spatial_fields(X)

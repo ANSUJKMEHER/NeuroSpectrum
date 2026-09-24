@@ -5207,6 +5207,7 @@
                     lr: 0.04,
                     repulsion_weight: repVal,
                     target_spacing: spacingVal,
+                    spectral_weight: parseFloat(document.getElementById('univ-slider-spec')?.value || univState.spectralWeight || 0.15),
                     adaptive_mode: univState.adaptiveMode || 'none',
                     zone_params: getUnivZoneParams()
                 };

@@ -175,6 +175,7 @@ class InferenceService:
         repulsion_weight: float = 0.25,
         target_spacing: Optional[float] = None,
         n_particles: int = 256,
+        spectral_weight: float = 0.15,
         adaptive_mode: str = "none",
         zone_params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -252,6 +253,8 @@ class InferenceService:
             capture_interval=capture_interval,
             target_spacing=target_spacing,
             repulsion_weight=repulsion_weight,
+            spectral_weight=spectral_weight,
+            target_gamma=float(target_spec.get("gamma", 1.0)),
             adaptive_mode=adaptive_mode,
             zone_params=zone_params
         )
