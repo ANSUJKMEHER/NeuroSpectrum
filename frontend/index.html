@@ -838,9 +838,9 @@
                             </span>
                             <span id="univ-label-spacing-val" class="font-bold text-teal-600 dark:text-teal-400">0.044 L</span>
                         </div>
-                        <input id="univ-slider-spacing" type="range" min="0.015" max="0.080" step="0.005" value="0.044" class="w-full" oninput="onUnivSpacingChange(this.value)">
+                        <input id="univ-slider-spacing" type="range" min="0.005" max="0.080" step="0.001" value="0.044" class="w-full" oninput="onUnivSpacingChange(this.value)">
                         <div class="flex justify-between text-[10px] font-mono text-slate-400">
-                            <span>Dense (0.015 L)</span>
+                            <span>Dense (0.005 L)</span>
                             <span id="univ-spacing-theoretical">d<sub>min</sub> ≈ 1/√(2N)</span>
                             <span>Sparse (0.080 L)</span>
                         </div>
@@ -2607,25 +2607,25 @@
             const N = finalPts.length;
 
             const targetTitle = isUniv
-                ? (univState.targetMode === 'text' ? `Text Glyph "${univState.targetText || 'NEURO'}"` : (univState.targetMode === 'shape' ? `Parametric Shape ${univState.targetShape ? univState.targetShape.toUpperCase() : 'HEART'}` : `Power-Law (γ = ${univState.targetGamma})`))
-                : `Power-Law Spectral (γ = ${(appState.targetGamma || 1.0).toFixed(2)})`;
+                ? (univState.targetMode === 'text' ? `Text Glyph "${univState.targetText || 'NEURO'}"` : (univState.targetMode === 'shape' ? `Parametric Shape ${univState.targetShape ? univState.targetShape.toUpperCase() : 'HEART'}` : `Power-Law (γ = ${Number(univState.targetGamma || 1.0).toFixed(2)})`))
+                : `Power-Law Spectral (γ = ${Number(appState.targetGamma !== undefined ? appState.targetGamma : 1.0).toFixed(2)})`;
 
             const sourceTitle = isUniv
                 ? (univState.inputMode === 'draw' ? 'Custom Hand-Drawn Contour' : (univState.inputMode === 'upload' ? 'Uploaded Point Cloud' : `Preset ${univState.inputPreset.toUpperCase()}`))
                 : (appState.initialDistribution || 'Random Uniform');
 
             const results = (isUniv ? (appState.univData && appState.univData.results) : (appState.simData && appState.simData.results)) || {};
-            const targetGamma = isUniv ? (univState.targetMode === 'gamma' ? univState.targetGamma : 1.0) : (appState.targetGamma || 1.0);
+            const targetGamma = isUniv ? (univState.targetMode === 'gamma' ? parseFloat(univState.targetGamma || 1.0) : 1.0) : parseFloat(appState.targetGamma !== undefined ? appState.targetGamma : 1.0);
             const measuredGamma = results.measured_gamma_hat !== undefined ? results.measured_gamma_hat : (traj[traj.length - 1].gamma_hat || targetGamma);
             const gammaErr = Math.abs(measuredGamma - targetGamma);
             const minSpacing = results.min_spacing !== undefined ? results.min_spacing : (traj[traj.length - 1].min_spacing || (1.0 / Math.sqrt(2 * N)));
             const cvNnd = results.cv_nnd !== undefined ? results.cv_nnd : (traj[traj.length - 1].cv_nnd || 0.285);
             const lossVal = isUniv ? (traj[traj.length - 1].loss || 0.0034) : ((traj[0].total_energy || 0) - (traj[traj.length - 1].total_energy || 0));
 
-            const spectralCurves = (isUniv ? (appState.univData && appState.univData.spectral_curves) : appState.simData.spectral_curves) || traj[traj.length - 1].spectral_curves || {};
-            const freqs = spectralCurves.frequencies || traj[traj.length - 1].frequencies || [];
-            const radPsd = spectralCurves.radial_psd || traj[traj.length - 1].radial_psd || [];
-            const psd2d = traj[traj.length - 1].psd_2d || (results && results.psd_2d) || null;
+            const simObj = isUniv ? (appState.univData || univState.data || {}) : (appState.simData || {});
+            const freqs = (simObj.spectral_curves && simObj.spectral_curves.frequencies) || simObj.frequencies || (traj[traj.length - 1] && traj[traj.length - 1].frequencies) || [];
+            const radPsd = (simObj.spectral_curves && simObj.spectral_curves.radial_psd) || simObj.radial_psd || (traj[traj.length - 1] && traj[traj.length - 1].radial_psd) || [];
+            const psd2d = (traj[traj.length - 1] && traj[traj.length - 1].psd_2d) || simObj.psd_2d || (results && results.psd_2d) || null;
 
             // Sample 5 keyframe evolution stages
             const totalSteps = traj.length - 1;
@@ -3111,8 +3111,8 @@
             // 3. EXECUTE EXPORT (PNG OR PDF)
             // =====================================================================
             const safeTargetName = isUniv
-                ? (univState.targetMode === 'text' ? univState.targetText : (univState.targetMode === 'shape' ? univState.targetShape : 'gamma'))
-                : `gamma_${targetGamma.toFixed(2)}`;
+                ? (univState.targetMode === 'text' ? (univState.targetText || 'text') : (univState.targetMode === 'shape' ? (univState.targetShape || 'shape') : 'gamma'))
+                : `gamma_${Number(targetGamma).toFixed(2)}`;
             const fileNameBase = `neurospectrum_multiphase_report_${mode}_${safeTargetName}_N${N}`;
 
             if (format === 'png') {
@@ -3156,102 +3156,103 @@
         // =========================================================================
 
         async function exportInteractiveReport(mode = 'sim') {
-            const isUniv = (mode === 'univ');
-            if (isUniv) {
-                if (!univState.trajectory || univState.trajectory.length === 0) {
-                    alert("Please run Universal synthesis first before exporting the Interactive HTML Dossier!");
-                    return;
+            try {
+                const isUniv = (mode === 'univ');
+                if (isUniv) {
+                    if (!univState.trajectory || univState.trajectory.length === 0) {
+                        alert("Please run Universal synthesis first before exporting the Interactive HTML Dossier!");
+                        return;
+                    }
+                } else {
+                    if (!appState.simData || !appState.simData.trajectory || appState.simData.trajectory.length === 0) {
+                        alert("Please run a simulation first before exporting the Interactive HTML Dossier!");
+                        return;
+                    }
                 }
-            } else {
-                if (!appState.simData || !appState.simData.trajectory || appState.simData.trajectory.length === 0) {
-                    alert("Please run a simulation first before exporting the Interactive HTML Dossier!");
-                    return;
+
+                const traj = isUniv ? univState.trajectory : appState.simData.trajectory;
+                const initPts = traj[0].points;
+                const finalPts = traj[traj.length - 1].points;
+                const N = finalPts.length;
+
+                const targetTitle = isUniv
+                    ? (univState.targetMode === 'text' ? `Text "${univState.targetText || 'NEURO'}"` : (univState.targetMode === 'shape' ? `Shape ${univState.targetShape ? univState.targetShape.toUpperCase() : 'HEART'}` : `Power-Law γ = ${Number(univState.targetGamma || 1.0).toFixed(2)}`))
+                    : `Power-Law Spectral γ = ${Number(appState.targetGamma !== undefined ? appState.targetGamma : 1.0).toFixed(2)}`;
+
+                const sourceTitle = isUniv
+                    ? (univState.inputMode === 'draw' ? 'Custom Hand-Drawn Contour' : (univState.inputMode === 'upload' ? 'Uploaded Point Cloud' : `Preset ${univState.inputPreset.toUpperCase()}`))
+                    : (appState.initialDistribution || 'Random Uniform');
+
+                const results = (isUniv ? (appState.univData && appState.univData.results) : (appState.simData && appState.simData.results)) || {};
+                const targetGamma = isUniv ? (univState.targetMode === 'gamma' ? parseFloat(univState.targetGamma || 1.0) : 1.0) : parseFloat(appState.targetGamma !== undefined ? appState.targetGamma : 1.0);
+                const measuredGamma = results.measured_gamma_hat !== undefined ? results.measured_gamma_hat : (traj[traj.length - 1].gamma_hat !== undefined ? traj[traj.length - 1].gamma_hat : targetGamma);
+                const minSpacing = results.min_spacing !== undefined ? results.min_spacing : (traj[traj.length - 1].min_spacing || (1.0 / Math.sqrt(2 * N)));
+                const cvNnd = results.cv_nnd !== undefined ? results.cv_nnd : (traj[traj.length - 1].cv_nnd || 0.285);
+                const lossVal = isUniv ? (traj[traj.length - 1].loss || 0.0034) : ((traj[0].total_energy || 0) - (traj[traj.length - 1].total_energy || 0));
+
+                const simObj = isUniv ? (appState.univData || univState.data || {}) : (appState.simData || {});
+                const freqs = (simObj.spectral_curves && simObj.spectral_curves.frequencies) || simObj.frequencies || (traj[traj.length - 1] && traj[traj.length - 1].frequencies) || [];
+                const radPsd = (simObj.spectral_curves && simObj.spectral_curves.radial_psd) || simObj.radial_psd || (traj[traj.length - 1] && traj[traj.length - 1].radial_psd) || [];
+
+                // 5 Keyframe stages
+                const totalSteps = traj.length - 1;
+                const stepIndices = [
+                    0,
+                    Math.round(totalSteps * 0.25),
+                    Math.round(totalSteps * 0.50),
+                    Math.round(totalSteps * 0.75),
+                    totalSteps
+                ];
+                const stageLabels = [
+                    "Stage 1: Source (0%)",
+                    "Stage 2: OT Flux (25%)",
+                    "Stage 3: Boundary Morph (50%)",
+                    "Stage 4: Spectral Anneal (75%)",
+                    "Stage 5: Equilibrium (100%)"
+                ];
+                const stagesData = stepIndices.map((idx, k) => ({
+                    step: traj[idx].step !== undefined ? traj[idx].step : idx,
+                    label: stageLabels[k],
+                    points: traj[idx].points
+                }));
+
+                // Compress trajectory for lightweight standalone HTML (sample max 80 frames)
+                const sampledTraj = [];
+                const stride = Math.max(1, Math.floor(traj.length / 80));
+                for (let i = 0; i < traj.length; i += stride) {
+                    sampledTraj.push({
+                        step: traj[i].step !== undefined ? traj[i].step : i,
+                        points: traj[i].points,
+                        loss: traj[i].loss,
+                        min_spacing: traj[i].min_spacing
+                    });
                 }
-            }
+                if (sampledTraj[sampledTraj.length - 1].step !== traj[traj.length - 1].step) {
+                    sampledTraj.push({
+                        step: traj[traj.length - 1].step !== undefined ? traj[traj.length - 1].step : totalSteps,
+                        points: traj[traj.length - 1].points,
+                        loss: traj[traj.length - 1].loss,
+                        min_spacing: traj[traj.length - 1].min_spacing
+                    });
+                }
 
-            const traj = isUniv ? univState.trajectory : appState.simData.trajectory;
-            const initPts = traj[0].points;
-            const finalPts = traj[traj.length - 1].points;
-            const N = finalPts.length;
-
-            const targetTitle = isUniv
-                ? (univState.targetMode === 'text' ? `Text "${univState.targetText || 'NEURO'}"` : (univState.targetMode === 'shape' ? `Shape ${univState.targetShape ? univState.targetShape.toUpperCase() : 'HEART'}` : `Power-Law γ = ${univState.targetGamma}`))
-                : `Power-Law Spectral γ = ${(appState.targetGamma || 1.0).toFixed(2)}`;
-
-            const sourceTitle = isUniv
-                ? (univState.inputMode === 'draw' ? 'Custom Hand-Drawn Contour' : (univState.inputMode === 'upload' ? 'Uploaded Point Cloud' : `Preset ${univState.inputPreset.toUpperCase()}`))
-                : (appState.initialDistribution || 'Random Uniform');
-
-            const results = (isUniv ? (appState.univData && appState.univData.results) : (appState.simData && appState.simData.results)) || {};
-            const targetGamma = isUniv ? (univState.targetMode === 'gamma' ? univState.targetGamma : 1.0) : (appState.targetGamma || 1.0);
-            const measuredGamma = results.measured_gamma_hat !== undefined ? results.measured_gamma_hat : (traj[traj.length - 1].gamma_hat || targetGamma);
-            const minSpacing = results.min_spacing !== undefined ? results.min_spacing : (traj[traj.length - 1].min_spacing || (1.0 / Math.sqrt(2 * N)));
-            const cvNnd = results.cv_nnd !== undefined ? results.cv_nnd : (traj[traj.length - 1].cv_nnd || 0.285);
-            const lossVal = isUniv ? (traj[traj.length - 1].loss || 0.0034) : ((traj[0].total_energy || 0) - (traj[traj.length - 1].total_energy || 0));
-
-            const spectralCurves = (isUniv ? (appState.univData && appState.univData.spectral_curves) : appState.simData.spectral_curves) || traj[traj.length - 1].spectral_curves || {};
-            const freqs = spectralCurves.frequencies || traj[traj.length - 1].frequencies || [];
-            const radPsd = spectralCurves.radial_psd || traj[traj.length - 1].radial_psd || [];
-
-            // 5 Keyframe stages
-            const totalSteps = traj.length - 1;
-            const stepIndices = [
-                0,
-                Math.round(totalSteps * 0.25),
-                Math.round(totalSteps * 0.50),
-                Math.round(totalSteps * 0.75),
-                totalSteps
-            ];
-            const stageLabels = [
-                "Stage 1: Source (0%)",
-                "Stage 2: OT Flux (25%)",
-                "Stage 3: Boundary Morph (50%)",
-                "Stage 4: Spectral Anneal (75%)",
-                "Stage 5: Equilibrium (100%)"
-            ];
-            const stagesData = stepIndices.map((idx, k) => ({
-                step: traj[idx].step !== undefined ? traj[idx].step : idx,
-                label: stageLabels[k],
-                points: traj[idx].points
-            }));
-
-            // Compress trajectory for lightweight standalone HTML (sample max 80 frames)
-            const sampledTraj = [];
-            const stride = Math.max(1, Math.floor(traj.length / 80));
-            for (let i = 0; i < traj.length; i += stride) {
-                sampledTraj.push({
-                    step: traj[i].step !== undefined ? traj[i].step : i,
-                    points: traj[i].points,
-                    loss: traj[i].loss,
-                    min_spacing: traj[i].min_spacing
-                });
-            }
-            if (sampledTraj[sampledTraj.length - 1].step !== traj[traj.length - 1].step) {
-                sampledTraj.push({
-                    step: traj[traj.length - 1].step !== undefined ? traj[traj.length - 1].step : totalSteps,
-                    points: traj[traj.length - 1].points,
-                    loss: traj[traj.length - 1].loss,
-                    min_spacing: traj[traj.length - 1].min_spacing
-                });
-            }
-
-            const payload = {
-                mode: mode,
-                title: isUniv ? `Universal Morphing: ${sourceTitle} → ${targetTitle}` : `Spectral Point Synthesis: γ = ${targetGamma.toFixed(2)}`,
-                sourceTitle: sourceTitle,
-                targetTitle: targetTitle,
-                N: N,
-                targetGamma: targetGamma,
-                measuredGamma: measuredGamma,
-                minSpacing: minSpacing,
-                cvNnd: cvNnd,
-                lossVal: lossVal,
-                trajectory: sampledTraj,
-                stages: stagesData,
-                frequencies: freqs,
-                radialPsd: radPsd,
-                generatedAt: new Date().toISOString()
-            };
+                const payload = {
+                    mode: mode,
+                    title: isUniv ? `Universal Morphing: ${sourceTitle} → ${targetTitle}` : `Spectral Point Synthesis: γ = ${Number(targetGamma).toFixed(2)}`,
+                    sourceTitle: sourceTitle,
+                    targetTitle: targetTitle,
+                    N: N,
+                    targetGamma: Number(targetGamma),
+                    measuredGamma: Number(measuredGamma),
+                    minSpacing: Number(minSpacing),
+                    cvNnd: Number(cvNnd),
+                    lossVal: Number(lossVal),
+                    trajectory: sampledTraj,
+                    stages: stagesData,
+                    frequencies: freqs,
+                    radialPsd: radPsd,
+                    generatedAt: new Date().toISOString()
+                };
 
             const payloadJson = JSON.stringify(payload);
             const tagScriptOpen = '<' + 'script>';
@@ -3647,14 +3648,18 @@
             const blob = new Blob([dossierHtml], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            const safeTargetName = isUniv
-                ? (univState.targetMode === 'text' ? univState.targetText : (univState.targetMode === 'shape' ? univState.targetShape : 'gamma'))
-                : `gamma_${targetGamma.toFixed(2)}`;
-            a.download = `neurospectrum_interactive_dossier_${mode}_${safeTargetName}_N${N}.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 2000);
+                const safeTargetName = isUniv
+                    ? (univState.targetMode === 'text' ? (univState.targetText || 'text') : (univState.targetMode === 'shape' ? (univState.targetShape || 'shape') : 'gamma'))
+                    : `gamma_${Number(targetGamma).toFixed(2)}`;
+                a.download = `neurospectrum_interactive_dossier_${mode}_${safeTargetName}_N${N}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
+            } catch (err) {
+                console.error("Failed to export interactive HTML dossier:", err);
+                alert("Failed to export interactive HTML dossier: " + (err.message || err));
+            }
         }
 
 
@@ -4256,11 +4261,16 @@
         // --- FACULTY GEOMETRY & PARTICLE SPACING BOUNDS ---
         function updateUnivSpacingGuide(n) {
             const num = parseInt(n) || 256;
-            const dmin = 1.0 / Math.sqrt(2 * num);
+            const isOutline = (univState.targetMode === 'shape' && univState.targetFillMode === 'outline') || (univState.targetMode === 'draw');
+            // For 1D outline contour (perimeter ~ 2.4L), spacing is ~ 2.4 / N; for 2D area, spacing is 1 / √(2N)
+            const dmin = isOutline ? Math.max(0.005, 2.35 / num) : (1.0 / Math.sqrt(2 * num));
             const slider = document.getElementById('univ-slider-spacing');
             const lbl = document.getElementById('univ-label-spacing-val');
             const theo = document.getElementById('univ-spacing-theoretical');
-            if (theo) theo.innerHTML = `d<sub>min</sub> ≈ ${dmin.toFixed(4)} L`;
+            if (theo) {
+                theo.innerHTML = isOutline ? `d<sub>contour</sub> ≈ ${dmin.toFixed(4)} L` : `d<sub>min</sub> ≈ ${dmin.toFixed(4)} L`;
+                theo.title = isOutline ? "1D Contour Arc-Length Bound (Perimeter ~ 2.4L / N)" : "2D Toroidal Poisson-Disk Bound (1 / √(2N))";
+            }
             if (slider && (!slider.dataset.userEdited || slider.dataset.userEdited === 'false')) {
                 slider.value = dmin.toFixed(4);
                 if (lbl) lbl.innerText = dmin.toFixed(4) + ' L';
@@ -4959,6 +4969,7 @@
                 if (btnOut) btnOut.className = inactiveClass;
                 if (btnSolid) btnSolid.className = activeClass;
             }
+            updateUnivSpacingGuide(univState.nParticles);
             updateUnivTargetPreview();
         }
 
@@ -5000,6 +5011,7 @@
                 if (metricTgtType) metricTgtType.innerText = '(Spectral Slope)';
             }
 
+            updateUnivSpacingGuide(univState.nParticles);
             updateUnivTargetPreview();
             renderUnivFrame();
         }
