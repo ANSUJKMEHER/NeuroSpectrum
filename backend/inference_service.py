@@ -173,7 +173,9 @@ class InferenceService:
         lr: float = 0.04,
         repulsion_weight: float = 0.25,
         target_spacing: Optional[float] = None,
-        n_particles: int = 256
+        n_particles: int = 256,
+        adaptive_mode: str = "none",
+        zone_params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Runs universal any-to-any point morphing via Optimal Transport and Backpropagation
@@ -247,6 +249,8 @@ class InferenceService:
             num_steps=num_steps,
             capture_interval=capture_interval,
             target_spacing=target_spacing,
-            repulsion_weight=repulsion_weight
+            repulsion_weight=repulsion_weight,
+            adaptive_mode=adaptive_mode,
+            zone_params=zone_params
         )
         return res

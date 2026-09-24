@@ -106,6 +106,8 @@ class UniversalMorphRequest(BaseModel):
     repulsion_weight: float = 0.25
     target_spacing: Optional[float] = None
     n_particles: int = 256
+    adaptive_mode: Optional[str] = "none"
+    zone_params: Optional[Dict[str, Any]] = None
 
 
 class CustomPointsUploadRequest(BaseModel):
@@ -434,7 +436,9 @@ def universal_morph(req: UniversalMorphRequest):
             lr=req.lr,
             repulsion_weight=req.repulsion_weight,
             target_spacing=req.target_spacing,
-            n_particles=req.n_particles
+            n_particles=req.n_particles,
+            adaptive_mode=req.adaptive_mode,
+            zone_params=req.zone_params
         )
         return res
     except Exception as e:

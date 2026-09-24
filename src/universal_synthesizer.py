@@ -440,10 +440,12 @@ class UniversalBackpropMorpher:
 
     def morph(self, source_points, target_points, 
               num_steps: int = 80, capture_interval: int = 2,
-              repulsion_weight: float = 0.25, target_spacing: float = None, **kwargs) -> dict:
+              repulsion_weight: float = 0.25, target_spacing: float = None,
+              adaptive_mode: str = "none", zone_params: dict = None, **kwargs) -> dict:
         """
         Morphs source_points into target_points via Autograd Backpropagation & Optimal Transport.
-        Supports dense trajectory capture, live 2D/1D Fourier spectral generation, and anti-collision.
+        Supports dense trajectory capture, live 2D/1D Fourier spectral generation, anti-collision,
+        and Professor's Spatially Adaptive Multi-Zone Gap & Noise distributions (Any Input -> Any Output).
         """
         # 1. Type coercion to NumPy
         if isinstance(source_points, torch.Tensor):
@@ -482,19 +484,60 @@ class UniversalBackpropMorpher:
                      int(num_steps * 0.75): f"Step {int(num_steps * 0.75)}: Target Assembly", 
                      num_steps - 1: f"Step {num_steps}: Target Equilibrium"}
 
-        if target_spacing is not None and float(target_spacing) > 0:
-            # Convert user target spacing in unit space into normalized coordinates
-            r_cut = float(target_spacing)
-        else:
-            r_cut = 0.90 / math.sqrt(N) # Blue-noise exclusion clearance in normalized space
-        
+        # Spatial Adaptive Clearance and Noise Fields
+        zp = zone_params or {}
+        mode = (adaptive_mode or "none").lower()
+
+        def get_spatial_fields(coords: torch.Tensor):
+            # coords: (N, 2) in [0, 1] normalized space
+            if mode == "split":
+                gap_l = float(zp.get("gap_left", 0.024))
+                gap_r = float(zp.get("gap_right", 0.065))
+                nl_str = str(zp.get("noise_left", "blue")).lower()
+                nr_str = str(zp.get("noise_right", "blue")).lower()
+                vl = 1.0 if "blue" in nl_str else (-1.0 if "red" in nl_str else 0.0)
+                vr = 1.0 if "blue" in nr_str else (-1.0 if "red" in nr_str else 0.0)
+                is_l = (coords[:, 0] < 0.5)
+                r_arr = torch.where(is_l, gap_l, gap_r)
+                n_arr = torch.where(is_l, vl, vr)
+                return r_arr, n_arr
+            elif mode == "radial":
+                gap_in = float(zp.get("gap_center", 0.022))
+                gap_out = float(zp.get("gap_periphery", 0.065))
+                nin_str = str(zp.get("noise_center", "blue")).lower()
+                nout_str = str(zp.get("noise_periphery", "red")).lower()
+                vin = 1.0 if "blue" in nin_str else (-1.0 if "red" in nin_str else 0.0)
+                vout = 1.0 if "blue" in nout_str else (-1.0 if "red" in nout_str else 0.0)
+                dc = torch.sqrt((coords[:, 0] - 0.5)**2 + (coords[:, 1] - 0.5)**2)
+                is_in = (dc < float(zp.get("radial_r0", 0.32)))
+                r_arr = torch.where(is_in, gap_in, gap_out)
+                n_arr = torch.where(is_in, vin, vout)
+                return r_arr, n_arr
+            elif mode == "quad":
+                gap_tl = float(zp.get("gap_tl", 0.022))
+                gap_tr = float(zp.get("gap_tr", 0.055))
+                gap_bl = float(zp.get("gap_bl", 0.055))
+                gap_br = float(zp.get("gap_br", 0.022))
+                is_top = (coords[:, 1] < 0.5)
+                is_l = (coords[:, 0] < 0.5)
+                r_arr = torch.where(is_top & is_l, gap_tl,
+                                   torch.where(is_top & ~is_l, gap_tr,
+                                   torch.where(~is_top & is_l, gap_bl, gap_br)))
+                n_arr = torch.full((coords.shape[0],), 1.0, device=coords.device)
+                return r_arr, n_arr
+            else:
+                if target_spacing is not None and float(target_spacing) > 0:
+                    base_rcut = float(target_spacing)
+                else:
+                    base_rcut = 0.90 / math.sqrt(N)
+                r_arr = torch.full((coords.shape[0],), base_rcut, device=coords.device)
+                n_arr = torch.full((coords.shape[0],), 1.0, device=coords.device)
+                return r_arr, n_arr
+
         # Helper to compute spectral and spatial properties for a frame
         def analyze_frame(pts_norm_np):
             pts_denorm = self._denormalize(pts_norm_np, tgt_min, tgt_scale)
-            # Clip to [0, 1] for 2D spectra
             pts_unit = np.clip(pts_denorm, 0.0, 1.0) if pts_denorm.shape[-1] == 2 else pts_denorm[:, :2]
-            
-            # Minimum inter-particle spacing
             if len(pts_denorm) > 1:
                 diffs = pts_denorm[:, None, :] - pts_denorm[None, :, :]
                 dists = np.linalg.norm(diffs, axis=-1)
@@ -502,7 +545,6 @@ class UniversalBackpropMorpher:
                 min_spacing = float(np.min(dists))
             else:
                 min_spacing = 0.0
-                
             return pts_denorm, pts_unit, min_spacing
 
         # Step 0 initial frame
@@ -538,14 +580,26 @@ class UniversalBackpropMorpher:
             else:
                 loss = l_cd
                 
-            # Inter-particle anti-collision barrier
+            # Inter-particle anti-collision & localized adaptive multi-zone spatial barrier
+            r_loc, noise_loc = get_spatial_fields(X)
+            R_ij = 0.5 * (r_loc.unsqueeze(1) + r_loc.unsqueeze(0))
+            Noise_ij = 0.5 * (noise_loc.unsqueeze(1) + noise_loc.unsqueeze(0))
+
             if repulsion_weight > 0 and N > 1:
                 diff_xx = X.unsqueeze(1) - X.unsqueeze(0)
                 dist_xx = torch.sqrt(torch.sum(diff_xx ** 2, dim=-1) + 1e-8)
-                dist_mask = (dist_xx < r_cut) & (dist_xx > 1e-6)
-                if torch.any(dist_mask):
-                    rep_loss = torch.mean((1.0 - dist_xx[dist_mask] / r_cut) ** 2)
+                
+                # Blue noise repulsion regime (enforcing local gap R_ij)
+                blue_mask = (dist_xx < R_ij) & (dist_xx > 1e-6) & (Noise_ij >= 0.0)
+                if torch.any(blue_mask):
+                    rep_loss = torch.mean((1.0 - dist_xx[blue_mask] / R_ij[blue_mask]) ** 2)
                     loss = loss + repulsion_weight * rep_loss
+                    
+                # Red noise clustering regime (attracting particles into organic clumps)
+                red_mask = (dist_xx < 2.5 * R_ij) & (dist_xx > 1e-6) & (Noise_ij < 0.0)
+                if torch.any(red_mask):
+                    cluster_loss = torch.mean((dist_xx[red_mask] / R_ij[red_mask]) ** 2)
+                    loss = loss + (repulsion_weight * 0.8) * cluster_loss
                 
             # Backward: exact spatial gradient dL / dX
             loss.backward()
@@ -560,10 +614,12 @@ class UniversalBackpropMorpher:
                 dist_xx = torch.sqrt(torch.sum(diff_xx ** 2, dim=-1) + 1e-8)
                 diag_mask = torch.eye(N, dtype=torch.bool, device=device)
                 dist_xx[diag_mask] = 1e9
-                too_close = dist_xx < (r_cut * 0.90)
+                
+                # Apply projection barrier honoring local adaptive gap
+                too_close = (dist_xx < (R_ij * 0.90)) & (Noise_ij >= 0.0)
                 if torch.any(too_close):
                     push_dir = diff_xx / (dist_xx.unsqueeze(-1) + 1e-8)
-                    push_mag = 0.5 * (r_cut * 0.90 - dist_xx).clamp(min=0.0)
+                    push_mag = 0.5 * (R_ij * 0.90 - dist_xx).clamp(min=0.0)
                     push_vec = torch.sum(push_dir * push_mag.unsqueeze(-1), dim=1)
                     X.data += 0.30 * push_vec
                 X.data = torch.clamp(X.data, min=0.01, max=0.99)

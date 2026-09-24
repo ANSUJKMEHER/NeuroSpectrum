@@ -313,7 +313,7 @@
                     <!-- 4 Preset Cards -->
                     <div class="grid grid-cols-2 gap-2">
                         <!-- Blue Noise -->
-                        <button onclick="setNoisePreset(1.0, 'spiral')" id="preset-blue" class="p-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition-all cursor-pointer dark:bg-indigo-950/40">
+                        <button onclick="setNoisePreset(1.0)" id="preset-blue" class="p-2.5 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-left transition-all cursor-pointer dark:bg-indigo-950/40">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300">Blue Noise</span>
                                 <span class="text-[10px] font-mono font-semibold text-indigo-600 dark:text-indigo-400">γ = +1.0</span>
@@ -322,7 +322,7 @@
                         </button>
 
                         <!-- White Noise -->
-                        <button onclick="setNoisePreset(0.0, 'random')" id="preset-white" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                        <button onclick="setNoisePreset(0.0)" id="preset-white" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-bold text-slate-700 dark:text-slate-300">White Noise</span>
                                 <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400">γ = 0.0</span>
@@ -331,7 +331,7 @@
                         </button>
 
                         <!-- Pink Noise -->
-                        <button onclick="setNoisePreset(-0.5, 'random')" id="preset-pink" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                        <button onclick="setNoisePreset(-0.5)" id="preset-pink" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Pink (1/f)</span>
                                 <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400">γ = -0.5</span>
@@ -340,7 +340,7 @@
                         </button>
 
                         <!-- Red Noise -->
-                        <button onclick="setNoisePreset(-1.0, 'clustered')" id="preset-red" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
+                        <button onclick="setNoisePreset(-1.8)" id="preset-red" class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-left transition-all cursor-pointer dark:bg-slate-800/60 dark:border-slate-700">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Red Noise</span>
                                 <span class="text-[10px] font-mono text-slate-500 dark:text-slate-400">γ = -1.0</span>
@@ -865,6 +865,106 @@
                         </div>
                         <input id="univ-slider-spec" type="range" min="0.0" max="0.40" step="0.05" value="0.15" class="w-full" oninput="document.getElementById('univ-label-spec-val').innerText = parseFloat(this.value).toFixed(2); updateSliderProgress('univ-slider-spec')">
                     </div>
+                    <!-- Spatially Adaptive Multi-Zone Gap & Noise Engine (Professor's Adaptive Feature) -->
+                    <div class="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                                <span>Multi-Zone Adaptive Gap (Faculty Feature)</span>
+                            </span>
+                            <span id="univ-badge-adaptive-mode" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-800">Uniform</span>
+                        </div>
+
+                        <!-- Mode Selector Buttons -->
+                        <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[11px] font-mono border border-slate-200 dark:border-slate-700">
+                            <button id="univ-mode-uniform" onclick="setUnivAdaptiveMode('none')" class="py-1 rounded bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs cursor-pointer text-center">Uniform</button>
+                            <button id="univ-mode-split" onclick="setUnivAdaptiveMode('split')" class="py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer text-center">Bilateral</button>
+                            <button id="univ-mode-radial" onclick="setUnivAdaptiveMode('radial')" class="py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer text-center">Radial</button>
+                            <button id="univ-mode-quad" onclick="setUnivAdaptiveMode('quad')" class="py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer text-center">4-Quad</button>
+                        </div>
+
+                        <!-- Panel: Bilateral Split (Left vs Right) -->
+                        <div id="univ-panel-split" class="hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                            <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <span>Left Half (X &lt; 0.5):</span>
+                                <div class="flex gap-1 text-[10px]">
+                                    <button onclick="setUnivZoneNoise('left', 'blue')" id="univ-btn-nl-blue" class="px-1.5 py-0.5 rounded bg-indigo-600 text-white font-bold cursor-pointer">Blue</button>
+                                    <button onclick="setUnivZoneNoise('left', 'white')" id="univ-btn-nl-white" class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer">White</button>
+                                    <button onclick="setUnivZoneNoise('left', 'red')" id="univ-btn-nl-red" class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer">Red</button>
+                                </div>
+                            </div>
+                            <div class="flex justify-between font-mono text-[11px] text-slate-500">
+                                <span>Gap Left (d₁):</span>
+                                <span id="univ-label-gap-left" class="font-bold text-indigo-600 dark:text-indigo-400">0.024 L</span>
+                            </div>
+                            <input id="univ-zone-gap-left" type="range" min="0.015" max="0.080" step="0.005" value="0.024" class="w-full" oninput="document.getElementById('univ-label-gap-left').innerText = parseFloat(this.value).toFixed(3) + ' L'">
+
+                            <div class="pt-1.5 border-t border-slate-200 dark:border-slate-700"></div>
+
+                            <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <span>Right Half (X ≥ 0.5):</span>
+                                <div class="flex gap-1 text-[10px]">
+                                    <button onclick="setUnivZoneNoise('right', 'blue')" id="univ-btn-nr-blue" class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer">Blue</button>
+                                    <button onclick="setUnivZoneNoise('right', 'white')" id="univ-btn-nr-white" class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer">White</button>
+                                    <button onclick="setUnivZoneNoise('right', 'red')" id="univ-btn-nr-red" class="px-1.5 py-0.5 rounded bg-rose-600 text-white font-bold cursor-pointer">Red (Clustered)</button>
+                                </div>
+                            </div>
+                            <div class="flex justify-between font-mono text-[11px] text-slate-500">
+                                <span>Gap Right (d₂):</span>
+                                <span id="univ-label-gap-right" class="font-bold text-rose-600 dark:text-rose-400">0.065 L</span>
+                            </div>
+                            <input id="univ-zone-gap-right" type="range" min="0.015" max="0.080" step="0.005" value="0.065" class="w-full" oninput="document.getElementById('univ-label-gap-right').innerText = parseFloat(this.value).toFixed(3) + ' L'">
+                        </div>
+
+                        <!-- Panel: Radial Core vs Perimeter -->
+                        <div id="univ-panel-radial" class="hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                            <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <span>Core Center (Radius &lt; 0.32):</span>
+                                <span class="text-[10px] text-indigo-500 font-mono font-semibold">Dense Blue</span>
+                            </div>
+                            <div class="flex justify-between font-mono text-[11px] text-slate-500">
+                                <span>Core Gap:</span>
+                                <span id="univ-label-gap-core" class="font-bold text-indigo-600 dark:text-indigo-400">0.022 L</span>
+                            </div>
+                            <input id="univ-zone-gap-center" type="range" min="0.015" max="0.080" step="0.005" value="0.022" class="w-full" oninput="document.getElementById('univ-label-gap-core').innerText = parseFloat(this.value).toFixed(3) + ' L'">
+
+                            <div class="pt-1.5 border-t border-slate-200 dark:border-slate-700"></div>
+
+                            <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <span>Periphery (Radius ≥ 0.32):</span>
+                                <span class="text-[10px] text-rose-500 font-mono font-semibold">Wide / Clustered</span>
+                            </div>
+                            <div class="flex justify-between font-mono text-[11px] text-slate-500">
+                                <span>Perimeter Gap:</span>
+                                <span id="univ-label-gap-peri" class="font-bold text-rose-600 dark:text-rose-400">0.065 L</span>
+                            </div>
+                            <input id="univ-zone-gap-periphery" type="range" min="0.015" max="0.080" step="0.005" value="0.065" class="w-full" oninput="document.getElementById('univ-label-gap-peri').innerText = parseFloat(this.value).toFixed(3) + ' L'">
+                        </div>
+
+                        <!-- Panel: 4-Quadrant Quad -->
+                        <div id="univ-panel-quad" class="hidden p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+                            <span class="font-bold text-slate-700 dark:text-slate-300">4-Quadrant Checkerboard Gaps:</span>
+                            <div class="grid grid-cols-2 gap-1.5 font-mono text-[10px]">
+                                <div class="p-1.5 rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                                    <span>Top-Left: 0.020 L</span>
+                                    <input id="univ-zone-gap-tl" type="hidden" value="0.020">
+                                </div>
+                                <div class="p-1.5 rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                                    <span>Top-Right: 0.055 L</span>
+                                    <input id="univ-zone-gap-tr" type="hidden" value="0.055">
+                                </div>
+                                <div class="p-1.5 rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                                    <span>Bottom-Left: 0.055 L</span>
+                                    <input id="univ-zone-gap-bl" type="hidden" value="0.055">
+                                </div>
+                                <div class="p-1.5 rounded bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                                    <span>Bottom-Right: 0.020 L</span>
+                                    <input id="univ-zone-gap-br" type="hidden" value="0.020">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
             </div>
@@ -1547,7 +1647,7 @@
 
         // --- 1-CLICK OPTIMAL BLUE NOISE ---
         function applyOptimalBlueNoise() {
-            setNoisePreset(1.0, 'spiral');
+            setNoisePreset(1.0);
             document.getElementById('slider-steps').value = 100;
             document.getElementById('label-steps-val').innerText = '100';
             updateSliderProgress('slider-steps');
@@ -1557,7 +1657,7 @@
         }
 
         // --- PRESET SELECTION ---
-        function setNoisePreset(gamma, dist) {
+        function setNoisePreset(gamma) {
             appState.targetGamma = gamma;
             document.getElementById('slider-gamma').value = gamma;
             document.getElementById('label-gamma-val').innerText = (gamma >= 0 ? '+' : '') + gamma.toFixed(2);
@@ -1591,7 +1691,7 @@
             }
 
             updateSliderProgress('slider-gamma');
-            setGeom(dist);
+            if (typeof updateSimSummaryBadge === 'function') updateSimSummaryBadge();
         }
 
         function onGammaChange(val) {
@@ -4732,6 +4832,75 @@
         }
 
         // --- PARAMETER CHANGE HANDLERS ---
+        
+        // --- Spatially Adaptive Multi-Zone Engine State & Functions ---
+        univState.adaptiveMode = 'none';
+        univState.zoneNoiseLeft = 'blue';
+        univState.zoneNoiseRight = 'red';
+        univState.zoneNoiseCenter = 'blue';
+        univState.zoneNoisePeriphery = 'red';
+
+        function setUnivAdaptiveMode(mode) {
+            univState.adaptiveMode = mode;
+            ['uniform', 'split', 'radial', 'quad'].forEach(m => {
+                const btn = document.getElementById('univ-mode-' + m);
+                if (btn) {
+                    if ((m === 'uniform' && mode === 'none') || m === mode) {
+                        btn.className = 'py-1 rounded bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs cursor-pointer text-center';
+                    } else {
+                        btn.className = 'py-1 rounded text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer text-center';
+                    }
+                }
+            });
+
+            const pSplit = document.getElementById('univ-panel-split');
+            const pRadial = document.getElementById('univ-panel-radial');
+            const pQuad = document.getElementById('univ-panel-quad');
+            const badge = document.getElementById('univ-badge-adaptive-mode');
+
+            if (pSplit) pSplit.classList.toggle('hidden', mode !== 'split');
+            if (pRadial) pRadial.classList.toggle('hidden', mode !== 'radial');
+            if (pQuad) pQuad.classList.toggle('hidden', mode !== 'quad');
+
+            if (badge) {
+                if (mode === 'split') badge.innerText = 'Bilateral Split';
+                else if (mode === 'radial') badge.innerText = 'Radial Core';
+                else if (mode === 'quad') badge.innerText = '4-Quadrant';
+                else badge.innerText = 'Uniform';
+            }
+        }
+
+        function setUnivZoneNoise(side, type) {
+            if (side === 'left') univState.zoneNoiseLeft = type;
+            if (side === 'right') univState.zoneNoiseRight = type;
+            ['blue', 'white', 'red'].forEach(t => {
+                const btn = document.getElementById(`univ-btn-n${side[0]}-${t}`);
+                if (btn) {
+                    const isSel = (type === t);
+                    btn.className = isSel
+                        ? (t === 'red' ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white font-bold cursor-pointer' : (t === 'blue' ? 'px-1.5 py-0.5 rounded bg-indigo-600 text-white font-bold cursor-pointer' : 'px-1.5 py-0.5 rounded bg-slate-700 text-white font-bold cursor-pointer'))
+                        : 'px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer';
+                }
+            });
+        }
+
+        function getUnivZoneParams() {
+            return {
+                gap_left: parseFloat(document.getElementById('univ-zone-gap-left')?.value || 0.024),
+                gap_right: parseFloat(document.getElementById('univ-zone-gap-right')?.value || 0.065),
+                noise_left: univState.zoneNoiseLeft || 'blue',
+                noise_right: univState.zoneNoiseRight || 'red',
+                gap_center: parseFloat(document.getElementById('univ-zone-gap-center')?.value || 0.022),
+                gap_periphery: parseFloat(document.getElementById('univ-zone-gap-periphery')?.value || 0.065),
+                noise_center: univState.zoneNoiseCenter || 'blue',
+                noise_periphery: univState.zoneNoisePeriphery || 'red',
+                gap_tl: parseFloat(document.getElementById('univ-zone-gap-tl')?.value || 0.020),
+                gap_tr: parseFloat(document.getElementById('univ-zone-gap-tr')?.value || 0.055),
+                gap_bl: parseFloat(document.getElementById('univ-zone-gap-bl')?.value || 0.055),
+                gap_br: parseFloat(document.getElementById('univ-zone-gap-br')?.value || 0.020)
+            };
+        }
+
         function onUnivNChange(val) {
             univState.nParticles = parseInt(val);
             const lbl = document.getElementById('univ-label-n-val');
@@ -4996,7 +5165,9 @@
                     capture_interval: 2,
                     lr: 0.04,
                     repulsion_weight: repVal,
-                    target_spacing: spacingVal
+                    target_spacing: spacingVal,
+                    adaptive_mode: univState.adaptiveMode || 'none',
+                    zone_params: getUnivZoneParams()
                 };
 
                 const resp = await fetch('/api/universal/morph', {

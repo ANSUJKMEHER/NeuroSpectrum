@@ -200,3 +200,51 @@ def compute_continuous_point_spectrum(points: np.ndarray, grid_res: int = 64):
             radial_p.append(0.0)
 
     return psd_2d, [int(b) for b in bins], radial_p
+
+import torch.nn.functional as F
+
+class DifferentiableWPSD(nn.Module):
+    def __init__(self, window_size=64, stride=32, fallback_global=True):
+        super().__init__()
+        self.window_size = window_size
+        self.stride = stride
+        self.fallback_global = fallback_global
+        
+        # 2D Hann window mitigates edge artifacts in local patches
+        window_1d = torch.hann_window(window_size)
+        self.register_buffer('window_2d', window_1d.unsqueeze(1) * window_1d.unsqueeze(0))
+        
+    def forward(self, point_density, gamma_field, global_psd_analyzer=None):
+        """
+        point_density: [B, 1, H, W] - Soft rasterized density grid
+        gamma_field: [B, 1, H, W] - User-painted 2D gamma scalar field
+        """
+        B, C, H, W = point_density.shape
+        
+        # Backward compatibility: Fallback to global FFT if field is uniform
+        if self.fallback_global and gamma_field.max() == gamma_field.min():
+            if global_psd_analyzer is not None:
+                # Bypass windowing, fallback to normal global FFT
+                return None
+            else:
+                pass # Use windowing anyway
+
+        # 1. Extract overlapping spatial patches using sliding windows
+        patches = F.unfold(point_density, kernel_size=self.window_size, stride=self.stride)
+        g_patches = F.unfold(gamma_field, kernel_size=self.window_size, stride=self.stride)
+        
+        # [B, C*W*W, NumPatches] -> [B, NumPatches, C, W, W]
+        patches = patches.view(B, C, self.window_size, self.window_size, -1).permute(0, 4, 1, 2, 3)
+        g_patches = g_patches.view(B, C, self.window_size, self.window_size, -1).permute(0, 4, 1, 2, 3)
+        
+        # 2. Apply Windowing Function
+        patches = patches * self.window_2d.unsqueeze(0).unsqueeze(0).unsqueeze(0)
+        
+        # 3. Compute Local 2D FFT per patch
+        fft_patches = torch.fft.fft2(patches, dim=(-2, -1))
+        power_spectrum = torch.fft.fftshift(torch.abs(fft_patches)**2, dim=(-2, -1))
+        
+        # 4. Average the gamma target for each patch
+        mean_gamma = g_patches.mean(dim=(-2, -1)).squeeze(-1) # [B, num_patches]
+        
+        return power_spectrum, mean_gamma

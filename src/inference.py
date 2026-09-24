@@ -290,13 +290,16 @@ class FrozenInferenceEngine:
                 if abs(target_gamma) <= 0.15:
                     noise = max(noise, 0.0003)  # Gentle thermal noise for Poisson statistics
 
+                # Adaptive kinetic step size for red noise clustering migration across periodic domain
+                effective_dt = dt * (1.0 + 1.25 * max(0.0, -target_gamma)) if target_gamma < -0.3 else dt
+
                 curr_pts, vel, forces, total_energy = step_velocity_verlet(
                     points=curr_pts,
                     velocities=vel,
                     forces=forces,
                     gamma=gamma_tensor,
                     energy_model=self.model,
-                    dt=dt,
+                    dt=effective_dt,
                     L=1.0,
                     max_displacement=0.03,
                     damping=damping,
