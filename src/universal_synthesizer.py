@@ -407,6 +407,38 @@ class TargetGeometryFactory:
         
         return np.stack([np.clip(x_norm, 0.02, 0.98), np.clip(y_norm, 0.02, 0.98)], axis=-1).astype(np.float32)
 
+    @staticmethod
+    def create_power_law_distribution(gamma: float = 1.0, n_points: int = 256, seed: int = 42) -> np.ndarray:
+        """
+        Synthesizes a normal continuous 2D particle distribution across the domain
+        governed by power-law spectral exponent gamma* (NOT constrained to any geometric shape/contour).
+        - gamma >= 0.5: Blue Noise (Poisson-Disk with spatial exclusion)
+        - 0.1 <= gamma < 0.5: Mild Blue / Stratified Jittered Grid
+        - -0.3 < gamma < 0.1: White Noise (Uniform Poisson Random)
+        - gamma <= -0.3: Red Noise (Clustered point process with voids)
+        """
+        import torch
+        import data
+        
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        
+        gamma = float(gamma)
+        if gamma >= 0.5:
+            pts_t = data.generate_poisson_disk(1, n_points)[0]
+        elif gamma >= 0.1:
+            pts_t = data.generate_jittered_grid(1, n_points, jitter_strength=0.6)[0]
+        elif gamma <= -0.3:
+            n_clusters = max(2, min(8, int(6 + gamma * 2)))
+            cluster_std = 0.04 + 0.02 * max(0.0, -gamma)
+            pts_t = data.generate_clustered_red_noise(1, n_points, n_clusters=n_clusters, cluster_std=cluster_std)[0]
+        else:
+            pts_t = data.generate_uniform_random(1, n_points)[0]
+            
+        pts = pts_t.cpu().numpy().astype(np.float32)
+        pts = np.clip(pts * 0.90 + 0.05, 0.03, 0.97).astype(np.float32)
+        return pts
+
 
 class UniversalBackpropMorpher:
     """

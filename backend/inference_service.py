@@ -150,6 +150,10 @@ class InferenceService:
             else:
                 pts = TargetGeometryFactory.create_target("star", n_points=n_points)
                 label = "Star (Default)"
+        elif tgt_type in ["gamma", "power_law"]:
+            gamma_val = float(target_spec.get("gamma", 1.0))
+            pts = TargetGeometryFactory.create_power_law_distribution(gamma_val, n_points=n_points)
+            label = f"Normal Distribution (γ* = {gamma_val:+.2f})"
         else:
             pts = TargetGeometryFactory.create_target("heart", n_points=n_points)
             label = "Heart Shape"
@@ -239,6 +243,9 @@ class InferenceService:
                 tgt_pts = np.asarray(raw_pts * N, dtype=np.float32)
             else:
                 tgt_pts = TargetGeometryFactory.create_target("star", n_points=N)
+        elif tgt_type in ["gamma", "power_law"]:
+            gamma_val = float(target_spec.get("gamma", 1.0))
+            tgt_pts = TargetGeometryFactory.create_power_law_distribution(gamma_val, n_points=N)
         else:
             tgt_pts = TargetGeometryFactory.create_target("heart", n_points=N)
 

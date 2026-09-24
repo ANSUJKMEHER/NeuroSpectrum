@@ -1245,7 +1245,7 @@
                             <canvas id="univ-target-preview-canvas" width="128" height="128" class="w-full h-full block"></canvas>
                         </div>
                         <div class="text-[11px] font-mono space-y-0.5">
-                            <div class="text-slate-500">Target Silhouette:</div>
+                            <div id="univ-target-preview-silhouette-title" class="text-slate-500">Target Silhouette:</div>
                             <div id="univ-target-preview-label" class="font-bold text-slate-800 dark:text-white">Text "NEURO"</div>
                             <div id="univ-target-preview-dots" class="text-emerald-600 dark:text-emerald-400 text-[10px]">256 Target Points</div>
                         </div>
@@ -5025,7 +5025,8 @@
                     fill_mode: univState.targetFillMode || 'outline',
                     points: (univState.targetMode === 'draw' || univState.targetMode === 'points') ? univState.customTargetPoints : undefined,
                     image_base64: univState.targetImageBase64 || undefined,
-                    n_points: nVal
+                    n_points: nVal,
+                    gamma: parseFloat(univState.targetGamma || 1.0)
                 };
 
                 const metricTgt = document.getElementById('univ-metric-target');
@@ -5034,7 +5035,7 @@
                     else if (univState.targetMode === 'shape') metricTgt.innerText = `${univState.targetShape.toUpperCase()} (${univState.targetFillMode})`;
                     else if (univState.targetMode === 'draw') metricTgt.innerText = `DRAWN (${univState.customTargetPoints.length} pts)`;
                     else if (univState.targetMode === 'upload') metricTgt.innerText = 'UPLOADED';
-                    else metricTgt.innerText = `γ = ${(univState.targetGamma >= 0 ? '+' : '') + univState.targetGamma.toFixed(2)}`;
+                    else metricTgt.innerText = `Domain γ* = ${(univState.targetGamma >= 0 ? '+' : '') + univState.targetGamma.toFixed(2)}`;
                 }
 
                 const resp = await fetch('/api/universal/target-preview', {
@@ -5051,12 +5052,16 @@
                     const dotsLabel = document.getElementById('univ-target-preview-dots');
                     const nameLabel = document.getElementById('univ-target-preview-label');
                     if (dotsLabel) dotsLabel.innerText = `${pts.length} Target Points`;
+                    const titleLabel = document.getElementById('univ-target-preview-silhouette-title');
+                    if (titleLabel) {
+                        titleLabel.innerText = (univState.targetMode === 'gamma') ? 'Target Distribution (No Shape):' : 'Target Silhouette:';
+                    }
                     if (nameLabel) {
                         if (univState.targetMode === 'text') nameLabel.innerText = `Text "${univState.targetText}"`;
                         else if (univState.targetMode === 'shape') nameLabel.innerText = `Shape "${univState.targetShape}" (${univState.targetFillMode})`;
                         else if (univState.targetMode === 'draw') nameLabel.innerText = `Hand-Drawn Contour (${pts.length} pts)`;
                         else if (univState.targetMode === 'upload') nameLabel.innerText = `Uploaded Silhouette`;
-                        else nameLabel.innerText = `Spectral γ* = ${univState.targetGamma.toFixed(2)}`;
+                        else nameLabel.innerText = `Normal Distribution (γ* = ${(univState.targetGamma >= 0 ? '+' : '') + univState.targetGamma.toFixed(2)})`;
                     }
                     if (data.psd_2d) renderUniv2DHeatmap(data.psd_2d);
                     if (data.radial_psd) updateUnivRadialChart(data.radial_psd);

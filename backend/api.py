@@ -95,6 +95,7 @@ class UniversalTargetPreviewRequest(BaseModel):
     image_base64: Optional[str] = None
     points: Optional[List[List[float]]] = None
     n_points: int = 256
+    gamma: Optional[float] = 1.0
 
 
 class UniversalMorphRequest(BaseModel):
@@ -417,7 +418,8 @@ def universal_target_preview(req: UniversalTargetPreviewRequest):
             "shape": req.shape,
             "fill_mode": req.fill_mode or "outline",
             "image_base64": req.image_base64,
-            "points": req.points
+            "points": req.points,
+            "gamma": req.gamma if req.gamma is not None else 1.0
         }
         res = inference_service.generate_target_preview(spec, n_points=req.n_points)
         return res
