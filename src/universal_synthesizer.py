@@ -679,16 +679,11 @@ class UniversalBackpropMorpher:
                 curr_norm_np = X.detach().cpu().numpy().copy()
                 pts_denorm, pts_unit, min_d = analyze_frame(curr_norm_np)
                 
-                # Compute spectra periodically or on keyframes
-                if is_keyframe or (step % (capture_interval * 3) == 0):
-                    psd_2d, freqs, rad_p = compute_continuous_point_spectrum(pts_unit)
-                    last_psd_2d = psd_2d.tolist()
-                    last_rad_p = rad_p
-                    last_freqs = freqs
-                else:
-                    last_psd_2d = None
-                    last_rad_p = None
-                    last_freqs = freqs_0
+                # Compute spectra for every captured trajectory frame
+                psd_2d, freqs, rad_p = compute_continuous_point_spectrum(pts_unit)
+                last_psd_2d = psd_2d.tolist()
+                last_rad_p = rad_p
+                last_freqs = freqs
 
                 trajectory.append({
                     'step': step,
