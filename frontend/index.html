@@ -175,6 +175,13 @@
                 linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
             background-size: 100% 100%, 30px 30px, 30px 30px;
         }
+
+        .image-render-pixelated {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500/20 selection:text-indigo-900">
@@ -1265,18 +1272,25 @@
                         <span class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-bold">Continuous FT</span>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 items-center">
+                    <div class="grid grid-cols-2 gap-3 items-center">
                         <!-- 2D Power Spectrum -->
                         <div class="flex flex-col items-center space-y-1">
-                            <div class="w-24 h-24 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 flex items-center justify-center relative">
-                                <canvas id="univ-psd-2d-canvas" width="128" height="128" class="w-full h-full block"></canvas>
+                            <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 flex items-center justify-center relative shadow-inner">
+                                <canvas id="univ-psd-2d-canvas" width="64" height="64" class="w-full h-full image-render-pixelated block"></canvas>
+                                <!-- Reticle crosshair for DC origin -->
+                                <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
+                                    <div class="w-full h-[1px] bg-red-400"></div>
+                                </div>
+                                <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
+                                    <div class="h-full w-[1px] bg-red-400"></div>
+                                </div>
                             </div>
                             <span class="text-[10px] font-mono text-slate-400">2D Spectrum |F(k)|²</span>
                         </div>
 
                         <!-- 1D Radial Chart -->
                         <div class="flex flex-col space-y-1">
-                            <div class="h-24 w-full relative">
+                            <div class="h-28 sm:h-32 w-full relative">
                                 <canvas id="chart-univ-radial"></canvas>
                             </div>
                             <span class="text-[10px] font-mono text-slate-400 text-center">Radial P(k) vs Slope</span>
@@ -2348,8 +2362,12 @@
         function render2DHeatmapLive(matrix) {
             const canvas = document.getElementById('canvas-2d-psd-live');
             if (!canvas || !matrix) return;
-            const ctx = canvas.getContext('2d');
             const dim = matrix.length;
+            if (canvas.width !== dim || canvas.height !== dim) {
+                canvas.width = dim;
+                canvas.height = dim;
+            }
+            const ctx = canvas.getContext('2d');
             const img = ctx.createImageData(dim, dim);
 
             let vals = [];
@@ -3756,8 +3774,12 @@
         function render2DHeatmap(matrix) {
             const canvas = document.getElementById('canvas-2d-psd');
             if (!canvas || !matrix) return;
-            const ctx = canvas.getContext('2d');
             const dim = matrix.length;
+            if (canvas.width !== dim || canvas.height !== dim) {
+                canvas.width = dim;
+                canvas.height = dim;
+            }
+            const ctx = canvas.getContext('2d');
             const img = ctx.createImageData(dim, dim);
             const cx = Math.floor(dim / 2);
             const cy = Math.floor(dim / 2);
@@ -5755,8 +5777,12 @@
         function renderUniv2DHeatmap(matrix) {
             const canvas = document.getElementById('univ-psd-2d-canvas');
             if (!canvas || !matrix) return;
-            const ctx = canvas.getContext('2d');
             const dim = matrix.length;
+            if (canvas.width !== dim || canvas.height !== dim) {
+                canvas.width = dim;
+                canvas.height = dim;
+            }
+            const ctx = canvas.getContext('2d');
             const img = ctx.createImageData(dim, dim);
 
             let vals = [];
