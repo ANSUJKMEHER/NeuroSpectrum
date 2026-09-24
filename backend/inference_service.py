@@ -125,28 +125,25 @@ class InferenceService:
             shape_name = target_spec.get("shape", "heart").lower()
             pts = TargetGeometryFactory.create_target(shape_name, n_points=n_points, fill_mode=fill_mode)
             label = f"Shape: {shape_name.capitalize()} ({fill_mode.capitalize()})"
-        elif tgt_type == "image":
-            import io, base64
-            from PIL import Image
+        elif tgt_type in ["upload", "points", "draw", "image"]:
             img_b64 = target_spec.get("image_base64", "")
+            raw_pts = target_spec.get("points", [])
             if img_b64:
+                import io, base64
+                from PIL import Image
                 if "," in img_b64:
                     img_b64 = img_b64.split(",")[1]
                 img_bytes = base64.b64decode(img_b64)
                 img = Image.open(io.BytesIO(img_bytes))
                 pts = TargetGeometryFactory.create_from_image(img, n_points=n_points)
-                label = "Image Silhouette"
-            else:
-                pts = TargetGeometryFactory.create_target("star", n_points=n_points)
-                label = "Star (Default)"
-        elif tgt_type in ["points", "draw"]:
-            raw_pts = target_spec.get("points", [])
-            if len(raw_pts) > 1:
-                pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=n_points)
-                label = "Hand-Drawn Contour"
-            elif len(raw_pts) == 1:
-                pts = np.asarray(raw_pts * n_points, dtype=np.float32)
-                label = "Single Point"
+                label = "Uploaded Image Silhouette"
+            elif raw_pts and len(raw_pts) > 0:
+                if tgt_type == "draw":
+                    pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=n_points)
+                    label = "Hand-Drawn Contour"
+                else:
+                    pts = TargetGeometryFactory.create_from_point_cloud(raw_pts, n_points=n_points)
+                    label = f"Uploaded Points ({len(pts)} pts)"
             else:
                 pts = TargetGeometryFactory.create_target("star", n_points=n_points)
                 label = "Star (Default)"
@@ -223,24 +220,22 @@ class InferenceService:
         elif tgt_type == "shape":
             shape_name = target_spec.get("shape", "heart").lower()
             tgt_pts = TargetGeometryFactory.create_target(shape_name, n_points=N, fill_mode=fill_mode)
-        elif tgt_type == "image":
-            import io, base64
-            from PIL import Image
+        elif tgt_type in ["upload", "points", "draw", "image"]:
             img_b64 = target_spec.get("image_base64", "")
+            raw_pts = target_spec.get("points", [])
             if img_b64:
+                import io, base64
+                from PIL import Image
                 if "," in img_b64:
                     img_b64 = img_b64.split(",")[1]
                 img_bytes = base64.b64decode(img_b64)
                 img = Image.open(io.BytesIO(img_bytes))
                 tgt_pts = TargetGeometryFactory.create_from_image(img, n_points=N)
-            else:
-                tgt_pts = TargetGeometryFactory.create_target("star", n_points=N)
-        elif tgt_type in ["points", "draw"]:
-            raw_pts = target_spec.get("points", [])
-            if len(raw_pts) > 1:
-                tgt_pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=N)
-            elif len(raw_pts) == 1:
-                tgt_pts = np.asarray(raw_pts * N, dtype=np.float32)
+            elif raw_pts and len(raw_pts) > 0:
+                if tgt_type == "draw":
+                    tgt_pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=N)
+                else:
+                    tgt_pts = TargetGeometryFactory.create_from_point_cloud(raw_pts, n_points=N)
             else:
                 tgt_pts = TargetGeometryFactory.create_target("star", n_points=N)
         elif tgt_type in ["gamma", "power_law"]:

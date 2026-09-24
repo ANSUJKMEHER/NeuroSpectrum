@@ -214,6 +214,19 @@ class TargetGeometryFactory:
         return np.clip(pts, 0.02, 0.98).astype(np.float32)
 
     @staticmethod
+    def create_from_point_cloud(points: list, n_points: int = 256) -> np.ndarray:
+        """Loads and normalizes an arbitrary uploaded 2D point cloud."""
+        raw = np.asarray(points, dtype=np.float32)
+        if len(raw) == 0:
+            return TargetGeometryFactory.create_target("star", n_points=n_points)
+        if len(raw) == n_points:
+            pts = raw
+        else:
+            idx = np.random.choice(len(raw), size=n_points, replace=(len(raw) < n_points))
+            pts = raw[idx]
+        return np.clip(pts, 0.02, 0.98).astype(np.float32)
+
+    @staticmethod
     def create_from_polyline(points: list, n_points: int = 256) -> np.ndarray:
         """Converts user-drawn hand strokes into an equidistant point cloud."""
         raw = np.asarray(points, dtype=np.float32)

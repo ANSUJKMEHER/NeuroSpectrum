@@ -4717,6 +4717,7 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     univState.targetImageBase64 = e.target.result;
+                    univState.customTargetPoints = [];
                     const info = document.getElementById('univ-tgt-upload-info');
                     const fname = document.getElementById('univ-tgt-upload-filename');
                     const count = document.getElementById('univ-tgt-upload-count');
@@ -4749,6 +4750,7 @@
                             return;
                         }
                         univState.customTargetPoints = pts;
+                        univState.targetImageBase64 = null;
                         const info = document.getElementById('univ-tgt-upload-info');
                         const fname = document.getElementById('univ-tgt-upload-filename');
                         const count = document.getElementById('univ-tgt-upload-count');
@@ -5023,7 +5025,7 @@
                     text: univState.targetText || 'NEURO',
                     shape: univState.targetShape,
                     fill_mode: univState.targetFillMode || 'outline',
-                    points: (univState.targetMode === 'draw' || univState.targetMode === 'points') ? univState.customTargetPoints : undefined,
+                    points: (univState.targetMode === 'draw' || univState.targetMode === 'points' || univState.targetMode === 'upload') ? univState.customTargetPoints : undefined,
                     image_base64: univState.targetImageBase64 || undefined,
                     n_points: nVal,
                     gamma: parseFloat(univState.targetGamma || 1.0)
