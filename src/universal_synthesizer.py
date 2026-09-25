@@ -447,13 +447,14 @@ class UniversalBackpropMorpher:
         try:
             from energy import NeuralPairwiseEnergy
             import os
-            chk_path = "outputs/checkpoints/checkpoint_continuous_gamma.pt"
+            # Prioritize canonical production model (neurospectrum_model.pt), then full 200-epoch checkpoint
+            chk_path = "neurospectrum_model.pt"
             if not os.path.exists(chk_path):
-                chk_path = "neurospectrum_model.pt"
+                chk_path = "outputs/checkpoints/checkpoint_continuous_gamma.pt"
             if os.path.exists(chk_path):
                 net = NeuralPairwiseEnergy()
                 ckpt = torch.load(chk_path, map_location="cpu")
-                state = ckpt.get("model_state_dict", ckpt)
+                state = ckpt.get("energy_model_state_dict", ckpt.get("model_state_dict", ckpt))
                 net.load_state_dict(state, strict=False)
                 net.eval()
                 self.neural_energy = net
