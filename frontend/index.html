@@ -631,8 +631,8 @@
                                 <span class="font-bold text-slate-800 dark:text-slate-200">2D Power Spectrum |F(k)|²</span>
                                 <span class="text-[10px] text-slate-500 font-medium">DC (k=0) at center</span>
                             </div>
-                            <div class="w-48 h-48 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-black shadow-inner flex items-center justify-center relative">
-                                <canvas id="canvas-2d-psd-live" width="64" height="64" class="w-full h-full image-render-pixelated"></canvas>
+                            <div class="w-64 h-64 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-black shadow-inner flex items-center justify-center relative">
+                                <canvas id="canvas-2d-psd-live" width="128" height="128" class="w-full h-full image-render-pixelated"></canvas>
                                 <!-- Reticle crosshair for DC origin -->
                                 <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
                                     <div class="w-full h-[1px] bg-red-400"></div>
@@ -1275,8 +1275,8 @@
                     <div class="grid grid-cols-2 gap-3 items-center">
                         <!-- 2D Power Spectrum -->
                         <div class="flex flex-col items-center space-y-1">
-                            <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 flex items-center justify-center relative shadow-inner">
-                                <canvas id="univ-psd-2d-canvas" width="64" height="64" class="w-full h-full image-render-pixelated block"></canvas>
+                            <div class="w-44 h-44 sm:w-48 sm:h-48 rounded-xl overflow-hidden bg-slate-900 border border-slate-700 flex items-center justify-center relative shadow-inner">
+                                <canvas id="univ-psd-2d-canvas" width="128" height="128" class="w-full h-full image-render-pixelated block"></canvas>
                                 <!-- Reticle crosshair for DC origin -->
                                 <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
                                     <div class="w-full h-[1px] bg-red-400"></div>
@@ -1338,8 +1338,8 @@
                     <span class="font-mono text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-semibold dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">Isotropic</span>
                 </div>
                 <div class="flex items-center justify-center h-64">
-                    <div class="w-56 h-56 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-950 shadow-inner">
-                        <canvas id="canvas-2d-psd" width="64" height="64" class="w-full h-full image-render-pixelated"></canvas>
+                    <div class="w-72 h-72 rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-950 shadow-inner">
+                        <canvas id="canvas-2d-psd" width="128" height="128" class="w-full h-full image-render-pixelated"></canvas>
                     </div>
                 </div>
                 <div class="text-center text-xs font-mono text-slate-400">
@@ -3648,6 +3648,7 @@
             const blob = new Blob([dossierHtml], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
+                a.href = url;
                 const safeTargetName = isUniv
                     ? (univState.targetMode === 'text' ? (univState.targetText || 'text') : (univState.targetMode === 'shape' ? (univState.targetShape || 'shape') : 'gamma'))
                     : `gamma_${Number(targetGamma).toFixed(2)}`;
