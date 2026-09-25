@@ -252,9 +252,9 @@ class InferenceService:
         elif tgt_type == "shape" and fill_mode == "outline":
             is_1d_outline = True
             
-        if target_spacing is None and is_1d_outline:
+        if is_1d_outline:
             # 1D curve perimeter is roughly O(1), so spacing is O(1/N).
-            # We use a much smaller barrier radius to prevent gap tearing.
+            # We use a much smaller barrier radius to prevent gap tearing and explosions.
             target_spacing = 3.0 / max(N, 1)
 
         morpher = UniversalBackpropMorpher(lr=lr)

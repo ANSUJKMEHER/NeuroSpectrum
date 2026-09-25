@@ -3252,6 +3252,7 @@
                     stages: stagesData,
                     frequencies: freqs,
                     radialPsd: radPsd,
+                    psd_2d: psd2d,
                     generatedAt: new Date().toISOString()
                 };
 
@@ -3260,391 +3261,162 @@
             const tagScriptClose = '<' + '/script>';
             const tagTailwind = '<' + 'script src="https://cdn.tailwindcss.com">' + tagScriptClose;
 
-            const clientCode = `
+                        const clientCode = `
         var currentFrame = 0;
         var isPlaying = false;
-        var playbackSpeed = 1.0;
         var rafId = null;
         var lastTime = 0;
-
-        var canvas = document.getElementById('dos-canvas');
-        var ctx = canvas.getContext('2d');
+        
+        var canvasLive = document.getElementById('dos-canvas');
+        var ctxLive = canvasLive.getContext('2d');
+        var canvasBefore = document.getElementById('canvas-before');
+        var ctxBefore = canvasBefore.getContext('2d');
+        var canvas2d = document.getElementById('canvas-2d-spec');
+        var ctx2d = canvas2d.getContext('2d');
         var tooltipEl = document.getElementById('dos-tooltip');
         var slider = document.getElementById('dos-slider');
         var stepCurrEl = document.getElementById('dos-step-curr');
-        var stepTotalEl = document.getElementById('dos-step-total');
         var playBtn = document.getElementById('btn-dos-play');
-
+        
         var traj = DOSSIER_DATA.trajectory || [];
         var total = Math.max(0, traj.length - 1);
         slider.max = total;
-        stepTotalEl.innerText = total;
-
-        function getPoints() {
-            if (!traj.length) return [];
-            return traj[Math.min(currentFrame, traj.length - 1)].points || [];
-        }
-
-        function renderFrame() {
-            var w = canvas.width;
-            var h = canvas.height;
-            ctx.clearRect(0, 0, w, h);
-
-            // Subtle Grid
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.lineWidth = 1;
-            for (var g = 1; g < 4; g++) {
-                ctx.beginPath(); ctx.moveTo((g/4)*w, 0); ctx.lineTo((g/4)*w, h); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, (g/4)*h); ctx.lineTo(w, (g/4)*h); ctx.stroke();
-            }
-
-            var pts = getPoints();
+        
+        function drawCanvas(ctx, pts, dotColor) {
+            ctx.clearRect(0, 0, 800, 800);
             for (var i = 0; i < pts.length; i++) {
-                var px = pts[i][0] * w;
-                var py = pts[i][1] * h;
-
                 ctx.beginPath();
-                ctx.arc(px, py, 3.8, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(99, 102, 241, 0.28)';
-                ctx.fill();
-
-                ctx.beginPath();
-                ctx.arc(px, py, 2.0, 0, Math.PI * 2);
-                ctx.fillStyle = '#818cf8';
+                ctx.arc(pts[i][0] * 800, pts[i][1] * 800, 4.0, 0, Math.PI * 2);
+                ctx.fillStyle = dotColor;
                 ctx.fill();
             }
-
+        }
+        
+        // Draw Panel 1 (Before)
+        if (traj.length > 0) {
+            drawCanvas(ctxBefore, traj[0].points || [], '#94a3b8');
+        }
+        
+        function renderLiveFrame() {
+            if (!traj.length) return;
+            var pts = traj[Math.min(currentFrame, total)].points || [];
+            drawCanvas(ctxLive, pts, '#3b82f6');
             slider.value = currentFrame;
             stepCurrEl.innerText = currentFrame;
         }
-
-        function startLoop() {
-            function loop(t) {
-                if (!isPlaying) return;
-                if (!lastTime) lastTime = t;
-                var interval = 45 / playbackSpeed;
-                if (t - lastTime >= interval) {
-                    lastTime = t;
-                    currentFrame = (currentFrame >= total) ? 0 : currentFrame + 1;
-                    renderFrame();
-                }
-                rafId = requestAnimationFrame(loop);
+        
+        function loop(t) {
+            if (!isPlaying) return;
+            if (!lastTime) lastTime = t;
+            if (t - lastTime >= 50) {
+                lastTime = t;
+                currentFrame = (currentFrame >= total) ? 0 : currentFrame + 1;
+                renderLiveFrame();
             }
             rafId = requestAnimationFrame(loop);
         }
-
+        
         function togglePlay() {
             isPlaying = !isPlaying;
-            playBtn.innerText = isPlaying ? '⏸ Pause' : '▶ Play';
-            if (isPlaying) { lastTime = 0; startLoop(); }
+            playBtn.innerText = isPlaying ? 'Pause' : 'Play';
+            if (isPlaying) { lastTime = 0; rafId = requestAnimationFrame(loop); }
             else if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
         }
-
-        function stepFrame(delta) {
-            if (isPlaying) togglePlay();
-            currentFrame = Math.max(0, Math.min(total, currentFrame + delta));
-            renderFrame();
-        }
-
+        
         function onScrub(val) {
             if (isPlaying) togglePlay();
             currentFrame = parseInt(val);
-            renderFrame();
+            renderLiveFrame();
         }
-
-        // Hover particle inspection
-        canvas.addEventListener('mousemove', function(e) {
-            var rect = canvas.getBoundingClientRect();
+        
+        // Hover
+        canvasLive.addEventListener('mousemove', function(e) {
+            var rect = canvasLive.getBoundingClientRect();
             var mx = (e.clientX - rect.left) / rect.width;
             var my = (e.clientY - rect.top) / rect.height;
-
-            var pts = getPoints();
-            var closest = -1;
-            var minD = Infinity;
-
+            var pts = traj[Math.min(currentFrame, total)].points || [];
+            var closest = -1, minD = Infinity;
             for (var i = 0; i < pts.length; i++) {
-                var dx = pts[i][0] - mx;
-                var dy = pts[i][1] - my;
-                var d = Math.sqrt(dx * dx + dy * dy);
+                var dx = pts[i][0] - mx, dy = pts[i][1] - my;
+                var d = Math.sqrt(dx*dx + dy*dy);
                 if (d < minD) { minD = d; closest = i; }
             }
-
             if (closest !== -1 && minD < 0.08) {
-                var p = pts[closest];
                 document.getElementById('tip-id').innerText = '#' + closest;
-                document.getElementById('tip-coords').innerText = '(' + p[0].toFixed(3) + ', ' + p[1].toFixed(3) + ')';
-
-                // Calculate toroidal NND
-                var nnd = Infinity;
-                for (var j = 0; j < pts.length; j++) {
-                    if (j === closest) continue;
-                    var dx2 = Math.abs(pts[j][0] - p[0]);
-                    var dy2 = Math.abs(pts[j][1] - p[1]);
-                    if (dx2 > 0.5) dx2 = 1.0 - dx2;
-                    if (dy2 > 0.5) dy2 = 1.0 - dy2;
-                    var dist = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-                    if (dist < nnd) nnd = dist;
-                }
-                document.getElementById('tip-nnd').innerText = nnd.toFixed(4) + ' L';
-
-                var lx = p[0] * rect.width + 12;
-                var ly = p[1] * rect.height - 12;
-                if (lx + 150 > rect.width) lx = p[0] * rect.width - 160;
-                if (ly < 10) ly = 10;
-
-                tooltipEl.style.left = lx + 'px';
-                tooltipEl.style.top = ly + 'px';
+                document.getElementById('tip-coords').innerText = '(' + pts[closest][0].toFixed(3) + ', ' + pts[closest][1].toFixed(3) + ')';
+                var lx = pts[closest][0] * rect.width + 12;
+                var ly = pts[closest][1] * rect.height - 12;
+                tooltipEl.style.left = lx + 'px'; tooltipEl.style.top = ly + 'px';
                 tooltipEl.style.opacity = '1';
-            } else {
-                tooltipEl.style.opacity = '0';
-            }
+            } else tooltipEl.style.opacity = '0';
         });
-
-        canvas.addEventListener('mouseleave', function() { tooltipEl.style.opacity = '0'; });
-
-        // Build 5-Phase Filmstrip
-        var filmstripEl = document.getElementById('dos-filmstrip');
-        (DOSSIER_DATA.stages || []).forEach(function(st, idx) {
-            var card = document.createElement('div');
-            card.className = "p-1.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-indigo-500 cursor-pointer text-center space-y-1 transition-all";
-            card.title = st.label;
-
-            var cv = document.createElement('canvas');
-            cv.width = 80; cv.height = 80;
-            cv.className = "w-full aspect-square rounded bg-black block";
-            var cctx = cv.getContext('2d');
-            cctx.fillStyle = '#090d16';
-            cctx.fillRect(0, 0, 80, 80);
-
-            var spts = st.points || [];
-            var cols = ['#60a5fa', '#818cf8', '#a78bfa', '#c084fc', '#34d399'];
-            cctx.fillStyle = cols[idx % cols.length];
-            for (var i = 0; i < spts.length; i++) {
-                cctx.beginPath();
-                cctx.arc(spts[i][0] * 80, spts[i][1] * 80, 1.6, 0, Math.PI * 2);
-                cctx.fill();
-            }
-
-            var lbl = document.createElement('div');
-            lbl.className = "text-[9px] font-mono text-slate-300 truncate";
-            lbl.innerText = st.label.split(':')[0];
-
-            card.appendChild(cv);
-            card.appendChild(lbl);
-            card.onclick = function() {
-                if (isPlaying) togglePlay();
-                currentFrame = Math.round((idx / 4) * total);
-                renderFrame();
-            };
-            filmstripEl.appendChild(card);
-        });
-
-        // Render Radial Chart
-        function drawRadialChart() {
+        canvasLive.addEventListener('mouseleave', function() { tooltipEl.style.opacity = '0'; });
+        
+        // Draw Radial PSD
+        function drawRadial() {
             var cv = document.getElementById('dos-chart-radial');
-            if (!cv) return;
             var cctx = cv.getContext('2d');
-            var w = cv.width;
-            var h = cv.height;
-            var radP = DOSSIER_DATA.radialPsd || [];
-            if (!radP.length) return;
-
-            cctx.clearRect(0, 0, w, h);
-            cctx.strokeStyle = '#334155';
-            cctx.strokeRect(10, 10, w - 20, h - 25);
-
-            // Poisson 1.0 line
-            cctx.strokeStyle = '#64748b';
-            cctx.setLineDash([3, 3]);
-            cctx.beginPath(); cctx.moveTo(10, h * 0.5); cctx.lineTo(w - 10, h * 0.5); cctx.stroke();
-            cctx.setLineDash([]);
-
-            // Plot curve
-            var maxVal = Math.max(2.5, Math.max.apply(null, radP));
-            cctx.strokeStyle = '#818cf8';
-            cctx.lineWidth = 2;
+            cctx.clearRect(0, 0, 400, 200);
+            var freqs = DOSSIER_DATA.frequencies || [];
+            var psd = DOSSIER_DATA.radialPsd || [];
+            if (!freqs.length || !psd.length) return;
+            
             cctx.beginPath();
-            for (var i = 0; i < radP.length; i++) {
-                var vx = 10 + (i / (radP.length - 1)) * (w - 20);
-                var vy = (h - 15) - (Math.min(maxVal, radP[i]) / maxVal) * (h - 30);
-                if (i === 0) cctx.moveTo(vx, vy); else cctx.lineTo(vx, vy);
+            var maxP = Math.max(...psd, 0.001);
+            var minP = Math.min(...psd);
+            var maxF = Math.max(...freqs, 1);
+            
+            for (var i = 0; i < freqs.length; i++) {
+                var x = (freqs[i] / maxF) * 400;
+                var y = 200 - ((psd[i] - minP) / (maxP - minP)) * 180 - 10;
+                if (i === 0) cctx.moveTo(x, y); else cctx.lineTo(x, y);
             }
-            cctx.stroke();
+            cctx.strokeStyle = '#3b82f6'; cctx.lineWidth = 2; cctx.stroke();
+            
+            // Draw points
+            for (var i = 0; i < freqs.length; i++) {
+                var x = (freqs[i] / maxF) * 400;
+                var y = 200 - ((psd[i] - minP) / (maxP - minP)) * 180 - 10;
+                cctx.beginPath(); cctx.arc(x, y, 3, 0, Math.PI*2); cctx.fillStyle = '#3b82f6'; cctx.fill();
+            }
         }
-
-        renderFrame();
-        drawRadialChart();
+        
+        function draw2DSpectrum() {
+            var p2d = DOSSIER_DATA.psd_2d;
+            if (!p2d || !p2d.length) return;
+            var sH = p2d.length, sW = p2d[0].length;
+            var imgData = ctx2d.createImageData(128, 128);
+            var maxVal = 0;
+            for(var y=0; y<sH; y++) for(var x=0; x<sW; x++) if(p2d[y][x] > maxVal) maxVal = p2d[y][x];
+            maxVal = Math.max(maxVal, 1e-5);
+            
+            for (var y=0; y<sH; y++) {
+                for (var x=0; x<sW; x++) {
+                    var val = p2d[y][x] / maxVal;
+                    var c = Math.floor(val * 255);
+                    var idx = (y * 128 + x) * 4;
+                    imgData.data[idx] = c; imgData.data[idx+1] = c; imgData.data[idx+2] = c; imgData.data[idx+3] = 255;
+                }
+            }
+            ctx2d.putImageData(imgData, 0, 0);
+            
+            // Draw rings
+            ctx2d.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx2d.setLineDash([3, 3]);
+            [0.2, 0.35, 0.48].forEach(r => {
+                ctx2d.beginPath();
+                ctx2d.arc(64, 64, r * 128, 0, Math.PI*2);
+                ctx2d.stroke();
+            });
+        }
+        
+        window.addEventListener('load', function() {
+            currentFrame = total;
+            renderLiveFrame();
+            drawRadial();
+            draw2DSpectrum();
+        });
 `;
-
-            const calcDminStr = (1.0 / Math.sqrt(2 * payload.N)).toFixed(4);
-            const calcHexStr = (1.075 / Math.sqrt(payload.N)).toFixed(4);
-
-            const dossierHtml = '<!DOCTYPE html>\n<html lang="en" class="dark">\n<head>\n' +
-                '    <meta charset="UTF-8">\n' +
-                '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
-                '    <title>NeuroSpectrum Interactive Dossier — ' + payload.title + '</title>\n' +
-                '    <link rel="preconnect" href="https://fonts.googleapis.com">\n' +
-                '    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
-                '    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">\n' +
-                '    ' + tagTailwind + '\n' +
-                '    <style>\n' +
-                '        body { font-family: "Inter", system-ui, sans-serif; }\n' +
-                '        .font-mono { font-family: "JetBrains Mono", monospace; }\n' +
-                '        @media print {\n' +
-                '            .no-print { display: none !important; }\n' +
-                '            body { background: #ffffff !important; color: #000000 !important; }\n' +
-                '            .print-card { border: 1px solid #cbd5e1 !important; background: #ffffff !important; color: #000000 !important; }\n' +
-                '        }\n' +
-                '    </style>\n' +
-                '</head>\n' +
-                '<body class="bg-slate-950 text-slate-100 min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col justify-between">\n\n' +
-                '    <div class="max-w-[1450px] w-full mx-auto space-y-6">\n\n' +
-                '        <!-- Top Header & Meta -->\n' +
-                '        <header class="flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl">\n' +
-                '            <div class="space-y-1">\n' +
-                '                <div class="flex items-center space-x-2">\n' +
-                '                    <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></span>\n' +
-                '                    <span class="text-xs font-mono font-bold tracking-widest text-indigo-400 uppercase">NEUROSPECTRUM STANDALONE DOSSIER</span>\n' +
-                '                </div>\n' +
-                '                <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight">' + payload.title + '</h1>\n' +
-                '                <p class="text-xs text-slate-400 font-mono">Source: <span class="text-indigo-300 font-bold">' + payload.sourceTitle + '</span> → Target: <span class="text-purple-300 font-bold">' + payload.targetTitle + '</span> | N = ' + payload.N + ' Particles</p>\n' +
-                '            </div>\n' +
-                '            <div class="flex items-center space-x-3 no-print">\n' +
-                '                <button onclick="window.print()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all shadow-md flex items-center space-x-1.5 cursor-pointer">\n' +
-                '                    <span>🖨️</span>\n' +
-                '                    <span>Print / Save PDF</span>\n' +
-                '                </button>\n' +
-                '                <div class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[11px] font-mono text-emerald-400 font-semibold">\n' +
-                '                    ✓ Self-Contained Offline\n' +
-                '                </div>\n' +
-                '            </div>\n' +
-                '        </header>\n\n' +
-                '        <!-- Main Studio Grid -->\n' +
-                '        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">\n\n' +
-                '            <!-- Center Viewport & Interactive Canvas (7 cols) -->\n' +
-                '            <div class="lg:col-span-7 flex flex-col space-y-4">\n' +
-                '                <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4 relative">\n' +
-                '                    <div class="flex items-center justify-between">\n' +
-                '                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Interactive Canvas (Hover to Inspect Points)</span>\n' +
-                '                        <div class="flex items-center space-x-2 font-mono text-xs text-slate-400">\n' +
-                '                            <span>Step: <strong id="dos-step-curr" class="text-indigo-400">0</strong> / <span id="dos-step-total">0</span></span>\n' +
-                '                            <span id="dos-status-tag" class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800">Equilibrium</span>\n' +
-                '                        </div>\n' +
-                '                    </div>\n\n' +
-                '                    <!-- Canvas Box with Hover Tooltip -->\n' +
-                '                    <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">\n' +
-                '                        <canvas id="dos-canvas" width="800" height="800" class="w-full h-full cursor-crosshair block"></canvas>\n\n' +
-                '                        <!-- Interactive Tooltip -->\n' +
-                '                        <div id="dos-tooltip" class="absolute pointer-events-none opacity-0 transition-opacity z-20 px-3 py-2 rounded-xl bg-slate-900/95 border border-indigo-500 shadow-2xl font-mono text-[11px] text-white space-y-0.5 backdrop-blur-md">\n' +
-                '                            <div class="text-indigo-400 font-bold flex items-center justify-between space-x-4">\n' +
-                '                                <span>Particle <span id="tip-id">#0</span></span>\n' +
-                '                                <span class="text-[9px] text-emerald-400 font-semibold">Hovered</span>\n' +
-                '                            </div>\n' +
-                '                            <div>Coords: <strong id="tip-coords">(0.000, 0.000)</strong></div>\n' +
-                '                            <div class="text-slate-400">Toroidal NND: <span id="tip-nnd" class="text-indigo-300">0.0000 L</span></div>\n' +
-                '                        </div>\n' +
-                '                    </div>\n\n' +
-                '                    <!-- Scrubber Timeline & Playback -->\n' +
-                '                    <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3 no-print">\n' +
-                '                        <div class="flex items-center space-x-3">\n' +
-                '                            <button id="btn-dos-play" onclick="togglePlay()" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all shadow-xs cursor-pointer">\n' +
-                '                                ▶ Play\n' +
-                '                            </button>\n' +
-                '                            <button onclick="stepFrame(-1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer">◀</button>\n' +
-                '                            <button onclick="stepFrame(1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono cursor-pointer">▶</button>\n' +
-                '                            <input id="dos-slider" type="range" min="0" max="100" value="0" class="flex-1 accent-indigo-500 cursor-pointer" oninput="onScrub(this.value)">\n' +
-                '                            <select id="dos-speed" onchange="playbackSpeed = parseFloat(this.value)" class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300">\n' +
-                '                                <option value="0.5">0.5x</option>\n' +
-                '                                <option value="1.0" selected>1.0x</option>\n' +
-                '                                <option value="2.0">2.0x</option>\n' +
-                '                            </select>\n' +
-                '                        </div>\n' +
-                '                    </div>\n\n' +
-                '                    <!-- 5-Phase Filmstrip Progression -->\n' +
-                '                    <div class="space-y-2">\n' +
-                '                        <div class="flex items-center justify-between text-xs">\n' +
-                '                            <span class="font-bold text-slate-300">5-Phase Evolution Filmstrip</span>\n' +
-                '                            <span class="text-[11px] font-mono text-slate-500">Click any stage to jump</span>\n' +
-                '                        </div>\n' +
-                '                        <div class="grid grid-cols-5 gap-2" id="dos-filmstrip"></div>\n' +
-                '                    </div>\n' +
-                '                </div>\n' +
-                '            </div>\n\n' +
-                '            <!-- Diagnostics & Faculty Advisory (5 cols) -->\n' +
-                '            <div class="lg:col-span-5 flex flex-col space-y-6">\n\n' +
-                '                <!-- 1. Radial Power Spectrum Density (PSD) -->\n' +
-                '                <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">\n' +
-                '                    <div class="flex items-center justify-between">\n' +
-                '                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Radial Power Spectral Density P(k)</span>\n' +
-                '                        <span class="text-[10px] font-mono text-indigo-400 font-bold">Continuous Fourier</span>\n' +
-                '                    </div>\n' +
-                '                    <div class="w-full h-44 rounded-xl bg-slate-950 border border-slate-800 p-2 flex items-center justify-center">\n' +
-                '                        <canvas id="dos-chart-radial" width="400" height="160" class="w-full h-full block"></canvas>\n' +
-                '                    </div>\n' +
-                '                    <div class="flex justify-between text-[11px] font-mono text-slate-400 px-1">\n' +
-                '                        <span>Low Freq (k=2)</span>\n' +
-                '                        <span class="text-indigo-400 font-semibold">Measured vs Slope</span>\n' +
-                '                        <span>High Freq (k=24)</span>\n' +
-                '                    </div>\n' +
-                '                </div>\n\n' +
-                '                <!-- 2. Physical Quality Scorecard -->\n' +
-                '                <div class="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">\n' +
-                '                    <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Physical Quality Scorecard</span>\n' +
-                '                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">\n' +
-                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
-                '                            <div class="text-[10px] text-slate-400">Min Spacing (d_min)</div>\n' +
-                '                            <div class="text-base font-bold text-emerald-400">' + Number(payload.minSpacing).toFixed(4) + ' L</div>\n' +
-                '                            <div class="text-[9px] text-slate-500">Zero Overlaps</div>\n' +
-                '                        </div>\n' +
-                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
-                '                            <div class="text-[10px] text-slate-400">Regularity (CV-NND)</div>\n' +
-                '                            <div class="text-base font-bold text-indigo-400">' + Number(payload.cvNnd).toFixed(3) + '</div>\n' +
-                '                            <div class="text-[9px] text-slate-500">Sub-Poissonian</div>\n' +
-                '                        </div>\n' +
-                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
-                '                            <div class="text-[10px] text-slate-400">Target Exponent (γ*)</div>\n' +
-                '                            <div class="text-base font-bold text-purple-400">' + Number(payload.targetGamma).toFixed(2) + '</div>\n' +
-                '                            <div class="text-[9px] text-slate-500">Blue Noise Repulsion</div>\n' +
-                '                        </div>\n' +
-                '                        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">\n' +
-                '                            <div class="text-[10px] text-slate-400">Toroidal Modulo</div>\n' +
-                '                            <div class="text-base font-bold text-teal-400">[0, 1)²</div>\n' +
-                '                            <div class="text-[9px] text-slate-500">100% Boundary Wrap</div>\n' +
-                '                        </div>\n' +
-                '                    </div>\n' +
-                '                </div>\n\n' +
-                '                <!-- 3. Faculty Advisory: Physical Spacing & Noise Selection -->\n' +
-                '                <div class="p-5 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border border-indigo-900/60 shadow-xl space-y-3">\n' +
-                '                    <div class="flex items-center space-x-2">\n' +
-                '                        <span class="text-base">📐</span>\n' +
-                '                        <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-300">Faculty Specification & Physics Grounding</h3>\n' +
-                '                    </div>\n' +
-                '                    <div class="space-y-2 text-xs text-slate-300 leading-relaxed">\n' +
-                '                        <p><strong>Physical Spacing Bounds (N = ' + payload.N + '):</strong></p>\n' +
-                '                        <ul class="list-disc list-inside space-y-1 font-mono text-[11px] text-slate-400">\n' +
-                '                            <li>Minimum Exclusion: <strong class="text-indigo-300">d_min ≈ 1 / √(2N) = ' + calcDminStr + ' L</strong></li>\n' +
-                '                            <li>Hexagonal Packing Limit: <strong class="text-purple-300">r_hex ≈ 1.075 / √N = ' + calcHexStr + ' L</strong></li>\n' +
-                '                        </ul>\n' +
-                '                        <div class="p-3 rounded-xl bg-slate-950/70 border border-indigo-800/40 space-y-1">\n' +
-                '                            <span class="text-indigo-400 font-bold text-[11px]">Why Blue Noise (not Red Noise) for Shapes like Hearts?</span>\n' +
-                '                            <p class="text-[11px] text-slate-400 leading-normal">\n' +
-                '                                Blue Noise enforces short-range anti-collision separation, stippling points uniformly along contours. In contrast, Red Noise (attractive) causes particles to collapse into 2–3 dense knots, leaving the rest of the shape completely hollow.\n' +
-                '                            </p>\n' +
-                '                        </div>\n' +
-                '                    </div>\n' +
-                '                </div>\n\n' +
-                '            </div>\n\n' +
-                '        </div>\n\n' +
-                '        <footer class="text-center font-mono text-[11px] text-slate-500 py-4 border-t border-slate-800/80">\n' +
-                '            NeuroSpectrum Differentiable Point Distribution Studio | Offline Self-Contained Interactive Dossier\n' +
-                '        </footer>\n\n' +
-                '    </div>\n\n' +
-                '    ' + tagScriptOpen + '\n' +
-                '        const DOSSIER_DATA = ' + payloadJson + ';\n' +
-                clientCode + '\n' +
-                '    ' + tagScriptClose + '\n' +
-                '</body>\n</html>';
-
             // Trigger Standalone HTML Download
             const blob = new Blob([dossierHtml], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);
