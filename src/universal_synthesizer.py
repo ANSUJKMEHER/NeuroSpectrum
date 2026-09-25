@@ -67,11 +67,19 @@ class SinkhornOptimalTransport(nn.Module):
         log_mu = torch.log(mu)
         log_nu = torch.log(nu)
         
-        K = -cost / self.epsilon
+        # Adaptive epsilon schedule for stability and precision
+        eps_schedule = [0.1, 0.05, 0.02, self.epsilon]
         
-        for _ in range(self.max_iters):
-            u = self.epsilon * (log_mu - torch.logsumexp(K + v.unsqueeze(0) / self.epsilon, dim=1))
-            v = self.epsilon * (log_nu - torch.logsumexp(K + u.unsqueeze(1) / self.epsilon, dim=0))
+        for eps in eps_schedule:
+            K = -cost / eps
+            for _ in range(self.max_iters):
+                u_prev = u.clone()
+                u = eps * (log_mu - torch.logsumexp(K + v.unsqueeze(0) / eps, dim=1))
+                v = eps * (log_nu - torch.logsumexp(K + u.unsqueeze(1) / eps, dim=0))
+                
+                # Convergence check for inner loop
+                if torch.max(torch.abs(u - u_prev)) < 1e-5:
+                    break
             
         log_P = (u.unsqueeze(1) + v.unsqueeze(0) - cost) / self.epsilon
         P = torch.exp(log_P)

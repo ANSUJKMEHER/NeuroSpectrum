@@ -192,17 +192,11 @@ class FrozenInferenceEngine:
                     forces_np = forces[0].detach().cpu().numpy()
                     force_norms = np.linalg.norm(forces_np, axis=-1)
 
-                    if is_milestone or step_idx == num_steps:
-                        spatial_metrics = compute_spatial_statistics(pts_np)
-                        cached_cv = float(spatial_metrics["cv_nnd"])
-                        cached_min_dist = float(spatial_metrics["min_distance"])
-                        cached_unique = int(spatial_metrics.get("effective_unique_particles", pts_np.shape[0]))
-                        cached_overlapping = int(spatial_metrics.get("overlapping_pairs_count", 0))
-                    else:
-                        cached_cv = 0.45
-                        cached_min_dist = 0.01
-                        cached_unique = int(pts_np.shape[0])
-                        cached_overlapping = 0
+                    spatial_metrics = compute_spatial_statistics(pts_np)
+                    cached_cv = float(spatial_metrics["cv_nnd"])
+                    cached_min_dist = float(spatial_metrics["min_distance"])
+                    cached_unique = int(spatial_metrics.get("effective_unique_particles", pts_np.shape[0]))
+                    cached_overlapping = int(spatial_metrics.get("overlapping_pairs_count", 0))
 
                     psd_2d_list = spec_dict["psd_2d"][0].cpu().numpy().tolist()
                     radial_psd_list = spec_dict["radial_psd"][0].cpu().numpy().tolist()

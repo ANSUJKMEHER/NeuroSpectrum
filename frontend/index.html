@@ -1992,7 +1992,7 @@
         }
 
         function startPlay() {
-            if (appState.playbackTimer) clearInterval(appState.playbackTimer);
+            if (appState.playbackTimer) cancelAnimationFrame(appState.playbackTimer);
             appState.isPlaying = true;
             document.getElementById('btn-pause').innerText = '⏸ Pause';
             const playInd = document.getElementById('scrub-play-indicator');
@@ -2001,25 +2001,34 @@
             appState.currentStep = 0;
 
             const total = appState.simData && appState.simData.trajectory ? appState.simData.trajectory.length - 1 : 0;
-            appState.playbackTimer = setInterval(() => {
+            let lastTime = 0;
+            const animLoop = (timestamp) => {
+                if (!appState.isPlaying) return;
+                if (timestamp - lastTime >= 35) {
+
                 if (appState.currentStep < total) {
                     appState.currentStep++;
                     updateScrubberUI(appState.currentStep, total);
                     renderFrame();
                 } else {
-                    clearInterval(appState.playbackTimer);
+                    cancelAnimationFrame(appState.playbackTimer); return;
                     appState.isPlaying = false;
                     document.getElementById('btn-pause').innerText = '▶ Play';
                     if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
                     document.getElementById('sim-status-label').innerText = 'Equilibrium reached';
                 }
-            }, 35);
+            
+                    lastTime = timestamp;
+                }
+                appState.playbackTimer = requestAnimationFrame(animLoop);
+            };
+            appState.playbackTimer = requestAnimationFrame(animLoop);
         }
 
         function togglePause() {
             const playInd = document.getElementById('scrub-play-indicator');
             if (appState.isPlaying) {
-                clearInterval(appState.playbackTimer);
+                cancelAnimationFrame(appState.playbackTimer);
                 appState.isPlaying = false;
                 document.getElementById('btn-pause').innerText = '▶ Resume';
                 if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-amber-500';
@@ -2033,24 +2042,33 @@
                 if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse';
                 document.getElementById('sim-status-label').innerText = 'Playing rollout...';
 
-                appState.playbackTimer = setInterval(() => {
+                let lastTime = 0;
+            const animLoop = (timestamp) => {
+                if (!appState.isPlaying) return;
+                if (timestamp - lastTime >= 35) {
+
                     if (appState.currentStep < total) {
                         appState.currentStep++;
                         updateScrubberUI(appState.currentStep, total);
                         renderFrame();
                     } else {
-                        clearInterval(appState.playbackTimer);
+                        cancelAnimationFrame(appState.playbackTimer); return;
                         appState.isPlaying = false;
                         document.getElementById('btn-pause').innerText = '▶ Play';
                         if (playInd) playInd.className = 'inline-flex h-2 w-2 rounded-full bg-slate-400';
                         document.getElementById('sim-status-label').innerText = 'Equilibrium reached';
                     }
-                }, 35);
+                
+                    lastTime = timestamp;
+                }
+                appState.playbackTimer = requestAnimationFrame(animLoop);
+            };
+            appState.playbackTimer = requestAnimationFrame(animLoop);
             }
         }
 
         function resetSimulation() {
-            if (appState.playbackTimer) clearInterval(appState.playbackTimer);
+            if (appState.playbackTimer) cancelAnimationFrame(appState.playbackTimer);
             appState.isPlaying = false;
             appState.currentStep = 0;
             const total = appState.simData && appState.simData.trajectory ? appState.simData.trajectory.length - 1 : 0;
@@ -2477,7 +2495,7 @@
                     simRafId = null;
                 }
                 if (appState.playbackTimer) {
-                    clearInterval(appState.playbackTimer);
+                    cancelAnimationFrame(appState.playbackTimer);
                     appState.playbackTimer = null;
                 }
                 appState.isPlaying = false;

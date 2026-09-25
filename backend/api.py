@@ -124,9 +124,9 @@ async def startup_event():
     training_service.set_event_loop(loop)
     
     def on_train_finish():
-        if os.path.exists("neurospectrum_model.pt"):
+        if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "neurospectrum_model.pt")):
             try:
-                inference_service.load_model("neurospectrum_model.pt")
+                inference_service.load_model(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "neurospectrum_model.pt"))
                 print("[API] Inference service reloaded newly trained canonical model.")
             except Exception as e:
                 print(f"[API] Error reloading model after training: {e}")
@@ -152,7 +152,7 @@ async def get_system_status():
             "device": str(dev),
             "device_name": get_device_name(dev),
             "mps_available": hasattr(torch.backends, "mps") and torch.backends.mps.is_available() if "torch" in globals() else False,
-            "cuda_available": False
+            "cuda_available": torch.cuda.is_available() if "torch" in globals() else False
         },
         "training": t_status,
         "inference": m_info
@@ -183,7 +183,7 @@ def load_model(req: ModelLoadRequest):
 def export_canonical_model():
     if training_service.session is None:
         raise HTTPException(status_code=400, detail="Training session unavailable")
-    path = training_service.session.export_canonical_model("neurospectrum_model.pt")
+    path = training_service.session.export_canonical_model(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "neurospectrum_model.pt"))
     # Refresh inference engine with canonical
     inference_service.load_model(path)
     return {"status": "exported", "filepath": path}
@@ -529,3 +529,4 @@ if os.path.exists(react_dist_dir):
     app.mount("/", StaticFiles(directory=react_dist_dir, html=True), name="frontend_react")
 elif os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend_legacy")
+

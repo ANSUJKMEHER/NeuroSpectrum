@@ -18,7 +18,7 @@ from experience import ExperienceBuffer
 
 
 class InferenceService:
-    def __init__(self, default_model_path: str = "neurospectrum_model.pt"):
+    def __init__(self, default_model_path: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "neurospectrum_model.pt")):
         self.device = torch.device("cpu") # Default to CPU for instant low-latency simulation
         self.model_path = default_model_path if os.path.exists(default_model_path) else "outputs/checkpoints/checkpoint_continuous_gamma.pt"
         self.engine: Optional[FrozenInferenceEngine] = None
@@ -277,3 +277,4 @@ class InferenceService:
             zone_params=zone_params
         )
         return res
+

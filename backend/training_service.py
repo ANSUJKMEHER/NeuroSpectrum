@@ -32,7 +32,7 @@ class TrainingService:
         self._lock = threading.Lock()  # Guards subscribers and state flags
         
         # Default initialization with pre-trained checkpoint if present
-        default_ckpt = "neurospectrum_model.pt"
+        default_ckpt = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "neurospectrum_model.pt")
         if not os.path.exists(default_ckpt):
             default_ckpt = "outputs/checkpoints/checkpoint_continuous_gamma.pt"
             
@@ -161,7 +161,7 @@ class TrainingService:
                 
                 # Auto-save canonical model on completion so new simulations immediately benefit
                 try:
-                    self.session.export_canonical_model("neurospectrum_model.pt")
+                    self.session.export_canonical_model(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "neurospectrum_model.pt"))
                 except Exception as save_err:
                     print(f"[TrainingService] Warning: canonical export failed: {save_err}")
 
@@ -229,7 +229,7 @@ class TrainingService:
     def reset_session(self) -> Dict[str, Any]:
         if self.is_running:
             self.stop()
-        default_ckpt = "neurospectrum_model.pt"
+        default_ckpt = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "neurospectrum_model.pt")
         if not os.path.exists(default_ckpt):
             default_ckpt = "outputs/checkpoints/checkpoint_continuous_gamma.pt"
         if os.path.exists(default_ckpt):
@@ -284,3 +284,4 @@ class TrainingService:
             "latest_metrics": latest_metrics,
             "loss_history": self.session.history.get("loss", [])[-50:] if self.session else []
         }
+

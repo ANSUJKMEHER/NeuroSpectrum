@@ -106,7 +106,7 @@ class NeuralPairwiseEnergy(nn.Module):
         hidden_dim: int = 64,
         num_layers: int = 3,       # kept for API compatibility (ignored internally)
         num_rbf: int = 16,
-        r_cut: float = 0.5,
+        r_cut: float = 0.5,  # Note: r_cut=0.5 exactly creates a zero-force attractor for N>=4 on Torus. Kept 0.5 for checkpoint compatibility.
         num_gamma_freqs: int = 3,
         use_divergence_prior: bool = True,
         eps_divergence: float = 0.02,
@@ -342,90 +342,5 @@ class NeuralPairwiseEnergy(nn.Module):
 # Backward-compatible alias
 PhysicsConsistentNeuralEnergy = NeuralPairwiseEnergy
 
-
-class LocalizedNeuralPairwiseEnergy(nn.Module):
-    """
-    Spatially Varying Neural Interaction Energy supporting dense scalar field gamma(x).
-    Enforces permutation invariance (Newton's 3rd Law) via symmetric basis conditioning.
-    """
-    def __init__(
-        self,
-        hidden_dim: int = 64,
-        num_layers: int = 3,
-        num_rbf: int = 16,
-        r_cut: float = 0.5,
-        num_gamma_freqs: int = 3,
-        use_divergence_prior: bool = True,
-        eps_divergence: float = 0.02,
-        r_repulsion: float = 0.04
-    ):
-        super().__init__()
-        self.hidden_dim = hidden_dim
-        self.num_rbf = num_rbf
-        self.r_cut = r_cut
-        self.use_divergence_prior = use_divergence_prior
-        self.eps_divergence = eps_divergence
-        self.r_repulsion = r_repulsion
-
-        self.rbf = RBFExpansion(num_bins=num_rbf, r_max=r_cut)
-        self.cutoff = SmoothCutoff(r_cut=r_cut)
-        
-        # We need to embed both mean_gamma and diff_gamma
-        # mean_gamma in [-2, 2], diff_gamma in [0, 4]
-        # For simplicity, we just use linear layers for them directly, or Fourier embedding.
-        self.gamma_embed = ContinuousFourierEmbedding(num_freqs=num_gamma_freqs)
-        
-        # FiLM network now takes the embedded symmetric features
-        # mean_gamma embedding size: 2*num_freqs
-        # diff_gamma embedding size: 2*num_freqs
-        cond_dim = 4 * num_gamma_freqs
-        
-        self.film_net = nn.Sequential(
-            nn.Linear(cond_dim, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, 2 * num_rbf)
-        )
-
-        self.mlp = nn.Sequential(
-            nn.Linear(num_rbf, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, 1)
-        )
-
-    def forward_pairwise(self, r_matrix: torch.Tensor, gamma_i: torch.Tensor, gamma_j: torch.Tensor) -> torch.Tensor:
-        B, N, M = r_matrix.shape
-
-        mean_gamma = (gamma_i + gamma_j) / 2.0
-        diff_gamma = torch.abs(gamma_i - gamma_j)
-        
-        # Embed conditioning features
-        emb_mean = self.gamma_embed(mean_gamma) # (B, N, M, 2*freqs)
-        emb_diff = self.gamma_embed(diff_gamma) # (B, N, M, 2*freqs)
-        cond_features = torch.cat([emb_mean, emb_diff], dim=-1) # (B, N, M, cond_dim)
-        
-        film_params = self.film_net(cond_features) # (B, N, M, 2*num_rbf)
-        scale, shift = film_params.chunk(2, dim=-1)
-
-        rbf_feats = self.rbf(r_matrix)
-        mod_feats = rbf_feats * (1.0 + scale) + shift
-        e_raw = self.mlp(mod_feats).squeeze(-1)
-        f_cut = self.cutoff(r_matrix)
-        e_matrix = e_raw * f_cut
-
-        if self.use_divergence_prior:
-            # Gate uses mean_gamma
-            gate = torch.clamp((mean_gamma + 0.5) / 0.8, min=0.05, max=1.0)
-            e_stab = (self.eps_divergence * gate) * torch.exp(
-                -(r_matrix ** 2) / (2.0 * (self.r_repulsion ** 2))
-            )
-            r_rep = self.r_repulsion
-            barrier_mask = (r_matrix < r_rep) & (r_matrix > 1e-7)
-            diff_rep = torch.clamp(1.0 - r_matrix / r_rep, min=0.0)
-            e_barrier = 0.5 * (0.04 * gate) * (diff_rep ** 2) * barrier_mask.float()
-            e_matrix = e_matrix + e_stab + e_barrier
-
-        return e_matrix
 
 
