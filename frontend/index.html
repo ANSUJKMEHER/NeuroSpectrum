@@ -3193,6 +3193,7 @@
                 const simObj = isUniv ? (appState.univData || univState.data || {}) : (appState.simData || {});
                 const freqs = (simObj.spectral_curves && simObj.spectral_curves.frequencies) || simObj.frequencies || (traj[traj.length - 1] && traj[traj.length - 1].frequencies) || [];
                 const radPsd = (simObj.spectral_curves && simObj.spectral_curves.radial_psd) || simObj.radial_psd || (traj[traj.length - 1] && traj[traj.length - 1].radial_psd) || [];
+                const psd2d = (traj[traj.length - 1] && traj[traj.length - 1].psd_2d) || simObj.psd_2d || results.psd_2d || null;
 
                 // 5 Keyframe stages
                 const totalSteps = traj.length - 1;

@@ -630,6 +630,8 @@ class UniversalBackpropMorpher:
 
             if repulsion_weight > 0 and N > 1:
                 diff_xx = X.unsqueeze(1) - X.unsqueeze(0)
+                # Toroidal shortest path distance for infinite canvas
+                diff_xx = diff_xx - torch.round(diff_xx)
                 dist_xx = torch.sqrt(torch.sum(diff_xx ** 2, dim=-1) + 1e-8)
                 
                 # Blue noise repulsion regime (enforcing local gap R_ij)
@@ -654,6 +656,8 @@ class UniversalBackpropMorpher:
             with torch.no_grad():
                 # Pairwise distance projection ensuring strict inter-particle clearance
                 diff_xx = X.unsqueeze(1) - X.unsqueeze(0)
+                # Toroidal shortest path distance for infinite canvas
+                diff_xx = diff_xx - torch.round(diff_xx)
                 dist_xx = torch.sqrt(torch.sum(diff_xx ** 2, dim=-1) + 1e-8)
                 diag_mask = torch.eye(N, dtype=torch.bool, device=device)
                 dist_xx[diag_mask] = 1e9
@@ -665,7 +669,9 @@ class UniversalBackpropMorpher:
                     push_mag = 0.5 * (R_ij * 0.90 - dist_xx).clamp(min=0.0)
                     push_vec = torch.sum(push_dir * push_mag.unsqueeze(-1), dim=1)
                     X.data += 0.30 * push_vec
-                X.data = torch.clamp(X.data, min=0.01, max=0.99)
+                
+                # Infinite canvas: Toroidal modulo wrap-around instead of clamping to edges
+                X.data = X.data % 1.0
                 
             loss_val = float(loss.item())
             loss_history.append(loss_val)

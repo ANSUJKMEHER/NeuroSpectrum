@@ -253,16 +253,15 @@ class InferenceService:
             is_1d_outline = True
             
         if is_1d_outline:
-            # 1D curve perimeter is roughly O(1), so spacing is O(1/N).
-            # We use a much smaller barrier radius to prevent gap tearing and explosions.
-            target_spacing = 3.0 / max(N, 1)
-            # Outlines need more steps and stronger OT to converge onto thin curves.
-            # The default 60 steps at lr=0.04 is far too few for 512 points → 1D curve.
+            # 1D target curves are ALREADY perfectly equidistant (Blue Noise).
+            # If we apply a spatial repulsion barrier, it fights the OT loss and pushes 
+            # particles off the 1D curve into a 2D band (fat contour).
+            # Solution: Disable repulsion and let Sinkhorn do a perfect 1-to-1 matching.
+            target_spacing = 0.0
+            repulsion_weight = 0.0
+            spectral_weight = 0.0
             num_steps = max(num_steps, 200)
             lr = max(lr, 0.06)
-            # Reduce repulsion and spectral weights so OT dominates the loss landscape.
-            repulsion_weight = min(repulsion_weight, 0.08)
-            spectral_weight = min(spectral_weight, 0.03)
 
         morpher = UniversalBackpropMorpher(lr=lr)
         res = morpher.morph(
