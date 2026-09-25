@@ -142,10 +142,11 @@ class TargetGeometryFactory:
         return np.stack([x_norm, y_norm], axis=-1).astype(np.float32)
 
     @staticmethod
-    def create_from_image(image_input, n_points: int = 512, threshold: float = 0.5) -> np.ndarray:
+    def create_from_image(image_input, n_points: int = 512, threshold: float = 0.05, continuous_tone: bool = True) -> np.ndarray:
         """
-        Converts ANY image file path or PIL Image into a target point cloud.
-        Darker/brighter pixels represent point mass.
+        Converts ANY image file path or PIL Image into a target point cloud for
+        high-fidelity Blue-Noise Halftoning & Stippling (as requested in Sir's lecture notes).
+        Darker/brighter pixels represent point mass distribution.
         """
         if isinstance(image_input, str):
             img = Image.open(image_input).convert('L')
@@ -161,9 +162,15 @@ class TargetGeometryFactory:
         else:
             density = arr
             
-        density = np.maximum(density - threshold, 0.0)
+        if continuous_tone:
+            # Power law tone mapping to sharpen midtones and retain shadow details
+            density = np.power(np.clip(density, 0.0, 1.0), 1.2)
+            density = np.maximum(density - threshold, 0.0)
+        else:
+            density = np.maximum(density - threshold, 0.0)
+
         if np.sum(density) < 1e-6:
-            density = 1.0 - arr # Fallback
+            density = 1.0 - arr + 1e-3 # Fallback
             
         prob = density.flatten() / np.sum(density)
         idx_flat = np.random.choice(len(prob), size=n_points, p=prob, replace=True)
@@ -383,42 +390,6 @@ class TargetGeometryFactory:
             pts = np.stack([np.clip(x, 0.02, 0.98), np.clip(y, 0.02, 0.98)], axis=-1).astype(np.float32)
 
         return pts
-
-    @staticmethod
-    def create_from_image(image_input, n_points: int = 512, threshold: float = 0.5) -> np.ndarray:
-        """
-        Converts ANY image file path or PIL Image into a target point cloud.
-        Darker/brighter pixels represent point mass.
-        """
-        if isinstance(image_input, str):
-            img = Image.open(image_input).convert('L')
-        elif isinstance(image_input, Image.Image):
-            img = image_input.convert('L')
-        else:
-            raise TypeError("image_input must be a file path string or PIL Image object.")
-            
-        arr = np.array(img).astype(np.float32) / 255.0
-        # If background is bright, invert so ink/features are mass
-        if np.mean(arr) > 0.5:
-            density = 1.0 - arr
-        else:
-            density = arr
-            
-        density = np.maximum(density - threshold, 0.0)
-        if np.sum(density) < 1e-6:
-            density = 1.0 - arr # Fallback
-            
-        prob = density.flatten() / np.sum(density)
-        idx_flat = np.random.choice(len(prob), size=n_points, p=prob, replace=True)
-        
-        h, w = arr.shape
-        y_pts = (idx_flat // w).astype(np.float32) + np.random.uniform(-0.5, 0.5, n_points)
-        x_pts = (idx_flat % w).astype(np.float32) + np.random.uniform(-0.5, 0.5, n_points)
-        
-        x_norm = x_pts / w
-        y_norm = y_pts / h # Standard screen/canvas orientation
-        
-        return np.stack([np.clip(x_norm, 0.02, 0.98), np.clip(y_norm, 0.02, 0.98)], axis=-1).astype(np.float32)
 
     @staticmethod
     def create_power_law_distribution(gamma: float = 1.0, n_points: int = 256, seed: int = 42) -> np.ndarray:

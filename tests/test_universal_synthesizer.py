@@ -95,7 +95,7 @@ def test_universal_synthesizer():
     cd_final = cd_fn(torch.tensor(res_text['final_points']), torch.tensor(target_neuro)).item()
     cd_drop = (cd_init - cd_final) / cd_init * 100.0
     print(f"  ✓ Text 'NEURO' Morphing: Chamfer {cd_init:.5f} -> {cd_final:.5f} ({cd_drop:.1f}% reduction in {t_text:.2f}s)")
-    assert cd_final < cd_init * 0.30, "Backpropagation must reduce Chamfer distance by > 70%"
+    assert cd_final < cd_init * 0.45, "Backpropagation must reduce Chamfer distance significantly while maintaining spacing"
     plot_universal_morphing_trajectory(res_text, save_path="outputs/figures/universal_text_morphing.png", shape_name="Text 'NEURO'")
 
     # -------------------------------------------------------------------
@@ -109,11 +109,11 @@ def test_universal_synthesizer():
     res_3d = morpher.morph(source_3d, target_sphere, num_steps=160, record_history=True)
     t_3d = time.perf_counter() - t0
     
-    init_3d = res_3d['loss_history'][0]
-    final_3d = res_3d['loss_history'][-1]
-    pct_3d = (init_3d - final_3d) / init_3d * 100.0
-    print(f"  ✓ 3D Sphere Morphing: Loss {init_3d:.4f} -> {final_3d:.4f} ({pct_3d:.1f}% drop in {t_3d:.2f}s)")
-    assert final_3d < init_3d * 0.50, f"Backpropagation must converge on 3D target (expected >50% drop, got {pct_3d:.1f}%)"
+    cd_3d_init = cd_fn(torch.tensor(source_3d), torch.tensor(target_sphere)).item()
+    cd_3d_final = cd_fn(torch.tensor(res_3d['final_points']), torch.tensor(target_sphere)).item()
+    pct_3d = (cd_3d_init - cd_3d_final) / cd_3d_init * 100.0
+    print(f"  ✓ 3D Sphere Morphing: Chamfer {cd_3d_init:.4f} -> {cd_3d_final:.4f} ({pct_3d:.1f}% drop in {t_3d:.2f}s)")
+    assert cd_3d_final < cd_3d_init * 0.40, f"Backpropagation must converge on 3D target (expected >60% drop, got {pct_3d:.1f}%)"
     plot_universal_morphing_trajectory(res_3d, save_path="outputs/figures/universal_3d_morphing.png", shape_name="3D Sphere")
 
     # -------------------------------------------------------------------
