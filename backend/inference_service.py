@@ -256,6 +256,13 @@ class InferenceService:
             # 1D curve perimeter is roughly O(1), so spacing is O(1/N).
             # We use a much smaller barrier radius to prevent gap tearing and explosions.
             target_spacing = 3.0 / max(N, 1)
+            # Outlines need more steps and stronger OT to converge onto thin curves.
+            # The default 60 steps at lr=0.04 is far too few for 512 points → 1D curve.
+            num_steps = max(num_steps, 200)
+            lr = max(lr, 0.06)
+            # Reduce repulsion and spectral weights so OT dominates the loss landscape.
+            repulsion_weight = min(repulsion_weight, 0.08)
+            spectral_weight = min(spectral_weight, 0.03)
 
         morpher = UniversalBackpropMorpher(lr=lr)
         res = morpher.morph(
