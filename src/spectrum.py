@@ -166,7 +166,7 @@ class DifferentiableSpectralAnalyzer(nn.Module):
         }
 
 
-def compute_continuous_point_spectrum(points: np.ndarray, grid_res: int = 64):
+def compute_continuous_point_spectrum(points: np.ndarray, grid_res: int = 128):
     """
     Computes exact continuous 2D Power Spectral Density and 1D Radial Spectrum
     directly from point coordinates via continuous point Fourier transform:

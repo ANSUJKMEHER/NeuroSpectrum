@@ -36,7 +36,7 @@ import data
 from inference import FrozenInferenceEngine
 
 
-def compute_point_fourier_spectrum(points: np.ndarray, grid_res: int = 64):
+def compute_point_fourier_spectrum(points: np.ndarray, grid_res: int = 128):
     """
     Computes exact continuous 2D Power Spectral Density P(k) and 1D Radial Spectrum
     directly from point coordinates via continuous point Fourier transform:

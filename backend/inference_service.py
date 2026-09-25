@@ -245,6 +245,18 @@ class InferenceService:
         else:
             tgt_pts = TargetGeometryFactory.create_target("heart", n_points=N)
 
+        # Handle 1D contour gap issue by adjusting spacing
+        is_1d_outline = False
+        if tgt_type == "draw":
+            is_1d_outline = True
+        elif tgt_type == "shape" and fill_mode == "outline":
+            is_1d_outline = True
+            
+        if target_spacing is None and is_1d_outline:
+            # 1D curve perimeter is roughly O(1), so spacing is O(1/N).
+            # We use a much smaller barrier radius to prevent gap tearing.
+            target_spacing = 3.0 / max(N, 1)
+
         morpher = UniversalBackpropMorpher(lr=lr)
         res = morpher.morph(
             src_pts,
