@@ -492,8 +492,8 @@
                     </div>
 
                     <!-- Canvas Viewport Box -->
-                    <div id="canvas-container" class="relative w-full max-w-[520px] aspect-square rounded-2xl overflow-hidden canvas-viewport border border-slate-800/80 shadow-md select-none">
-                        <canvas id="sim-canvas" width="520" height="520" class="w-full h-full cursor-crosshair block"></canvas>
+                    <div id="canvas-container" class="relative w-full max-w-[800px] aspect-square rounded-2xl overflow-hidden canvas-viewport border border-slate-800/80 shadow-md select-none">
+                        <canvas id="sim-canvas" width="800" height="800" class="w-full h-full cursor-crosshair block"></canvas>
 
                         <!-- HUD: Particle Count -->
                         <div class="absolute top-3 left-3 flex flex-col space-y-1.5 pointer-events-none z-10 font-mono text-[11px]">
@@ -999,7 +999,7 @@
 
                     <!-- Canvas Viewport Box -->
                     <div id="univ-canvas-container" class="relative w-full aspect-square rounded-2xl overflow-hidden canvas-viewport border border-slate-800/80 shadow-md select-none">
-                        <canvas id="univ-canvas" width="520" height="520" class="w-full h-full cursor-crosshair block"></canvas>
+                        <canvas id="univ-canvas" width="800" height="800" class="w-full h-full cursor-crosshair block"></canvas>
 
                         <!-- HUD: Stage Indicator -->
                         <div class="absolute top-3 left-3 flex flex-col space-y-1.5 pointer-events-none z-10 font-mono text-[11px]">
@@ -2140,7 +2140,7 @@
             if (appState.viewMode === 'density') {
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter';
-                const rSplat = Math.max(10, Math.min(26, Math.round(280 / Math.sqrt(pts.length))));
+                const rSplat = Math.max(10, Math.min(26, Math.round(280 / Math.sqrt(pts.length)))) * (w / 520.0);
                 for (let i = 0; i < pts.length; i++) {
                     const px = pts[i][0] * w;
                     const py = pts[i][1] * h;
@@ -2193,19 +2193,20 @@
             }
 
             // Draw Core Particles (in particle mode or overlay)
+            const scale = w / 520.0;
             for (let i = 0; i < pts.length; i++) {
                 const px = pts[i][0] * w;
                 const py = pts[i][1] * h;
 
                 // Subtle halo
                 ctx.beginPath();
-                ctx.arc(px, py, appState.viewMode === 'density' ? 2.5 : 4.5, 0, Math.PI * 2);
+                ctx.arc(px, py, (appState.viewMode === 'density' ? 2.5 : 4.5) * scale, 0, Math.PI * 2);
                 ctx.fillStyle = appState.viewMode === 'density' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(99, 102, 241, 0.35)';
                 ctx.fill();
 
                 // Core particle
                 ctx.beginPath();
-                ctx.arc(px, py, appState.viewMode === 'density' ? 1.5 : 2.2, 0, Math.PI * 2);
+                ctx.arc(px, py, (appState.viewMode === 'density' ? 1.5 : 2.2) * scale, 0, Math.PI * 2);
                 ctx.fillStyle = '#ffffff';
                 ctx.fill();
             }
@@ -3532,7 +3533,7 @@
                 '                    </div>\n\n' +
                 '                    <!-- Canvas Box with Hover Tooltip -->\n' +
                 '                    <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">\n' +
-                '                        <canvas id="dos-canvas" width="520" height="520" class="w-full h-full cursor-crosshair block"></canvas>\n\n' +
+                '                        <canvas id="dos-canvas" width="800" height="800" class="w-full h-full cursor-crosshair block"></canvas>\n\n' +
                 '                        <!-- Interactive Tooltip -->\n' +
                 '                        <div id="dos-tooltip" class="absolute pointer-events-none opacity-0 transition-opacity z-20 px-3 py-2 rounded-xl bg-slate-900/95 border border-indigo-500 shadow-2xl font-mono text-[11px] text-white space-y-0.5 backdrop-blur-md">\n' +
                 '                            <div class="text-indigo-400 font-bold flex items-center justify-between space-x-4">\n' +
@@ -5585,8 +5586,9 @@
 
             // 4. Draw Core Points (Simulation Studio style: crisp white core + subtle indigo halo)
             if (pts && pts.length > 0) {
-                const rHalo = pts.length > 320 ? 3.6 : 4.5;
-                const rCore = pts.length > 320 ? 1.8 : 2.2;
+                const scale = w / 520.0;
+                const rHalo = (pts.length > 320 ? 3.6 : 4.5) * scale;
+                const rCore = (pts.length > 320 ? 1.8 : 2.2) * scale;
                 for (let i = 0; i < pts.length; i++) {
                     const px = pts[i][0] * w;
                     const py = pts[i][1] * h;
