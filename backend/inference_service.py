@@ -202,7 +202,7 @@ class InferenceService:
         elif isinstance(source_points, dict) and "points" in source_points:
             raw_pts = source_points["points"]
             if len(raw_pts) > 1:
-                src_pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=256)
+                src_pts = TargetGeometryFactory.create_from_polyline(raw_pts, n_points=n_particles)
             else:
                 src_pts = np.asarray(raw_pts, dtype=np.float32)
         elif isinstance(source_points, list):

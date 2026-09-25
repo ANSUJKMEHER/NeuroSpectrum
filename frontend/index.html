@@ -427,7 +427,7 @@
                         <div>
                             <div class="flex justify-between text-xs mb-1 font-mono text-slate-500 dark:text-slate-400">
                                 <span>Particles N:</span>
-                                <span id="label-n-val" class="font-bold text-slate-800 dark:text-white">256</span>
+                                <span id="label-n-val" class="font-bold text-slate-800 dark:text-white">512</span>
                             </div>
                             <input id="slider-n" type="range" min="64" max="512" step="64" value="512" class="w-full" oninput="onNChange(this.value)">
                         </div>
@@ -533,7 +533,7 @@
                     </div>
 
                     <!-- Scrubber Timeline & Playback -->
-                    <div class="w-full max-w-[520px] mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col space-y-2">
+                    <div class="w-full max-w-[800px] mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col space-y-2">
                         <div class="flex justify-between items-center text-xs font-mono">
                             <div class="flex items-center space-x-2">
                                 <span id="scrub-play-indicator" class="inline-flex h-2 w-2 rounded-full bg-slate-400"></span>
@@ -817,7 +817,7 @@
                         <div>
                             <div class="flex justify-between text-xs mb-1 font-mono text-slate-500 dark:text-slate-400">
                                 <span>Particles N:</span>
-                                <span id="univ-label-n-val" class="font-bold text-slate-800 dark:text-white">256</span>
+                                <span id="univ-label-n-val" class="font-bold text-slate-800 dark:text-white">512</span>
                             </div>
                             <input id="univ-slider-n" type="range" min="64" max="512" step="64" value="512" class="w-full" oninput="onUnivNChange(this.value)">
                         </div>
@@ -2140,7 +2140,7 @@
             if (appState.viewMode === 'density') {
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter';
-                const rSplat = Math.max(10, Math.min(26, Math.round(280 / Math.sqrt(pts.length)))) * (w / 520.0);
+                const rSplat = Math.max(10, Math.min(26, Math.round(280 / Math.sqrt(pts.length))));
                 for (let i = 0; i < pts.length; i++) {
                     const px = pts[i][0] * w;
                     const py = pts[i][1] * h;
@@ -2193,20 +2193,19 @@
             }
 
             // Draw Core Particles (in particle mode or overlay)
-            const scale = w / 520.0;
             for (let i = 0; i < pts.length; i++) {
                 const px = pts[i][0] * w;
                 const py = pts[i][1] * h;
 
                 // Subtle halo
                 ctx.beginPath();
-                ctx.arc(px, py, (appState.viewMode === 'density' ? 2.5 : 4.5) * scale, 0, Math.PI * 2);
+                ctx.arc(px, py, appState.viewMode === 'density' ? 2.5 : 4.5, 0, Math.PI * 2);
                 ctx.fillStyle = appState.viewMode === 'density' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(99, 102, 241, 0.35)';
                 ctx.fill();
 
                 // Core particle
                 ctx.beginPath();
-                ctx.arc(px, py, (appState.viewMode === 'density' ? 1.5 : 2.2) * scale, 0, Math.PI * 2);
+                ctx.arc(px, py, appState.viewMode === 'density' ? 1.5 : 2.2, 0, Math.PI * 2);
                 ctx.fillStyle = '#ffffff';
                 ctx.fill();
             }
@@ -5358,9 +5357,8 @@
 
             // 4. Draw Core Points (Simulation Studio style: crisp white core + subtle indigo halo)
             if (pts && pts.length > 0) {
-                const scale = w / 520.0;
-                const rHalo = (pts.length > 320 ? 3.6 : 4.5) * scale;
-                const rCore = (pts.length > 320 ? 1.8 : 2.2) * scale;
+                const rHalo = pts.length > 320 ? 3.6 : 4.5;
+                const rCore = pts.length > 320 ? 1.8 : 2.2;
                 for (let i = 0; i < pts.length; i++) {
                     const px = pts[i][0] * w;
                     const py = pts[i][1] * h;
